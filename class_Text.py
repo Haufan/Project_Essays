@@ -3,7 +3,11 @@
 # Author: Dietmar Benndorf
 # Date: 2026-01-06
 # Description:
-#    ???
+#    Provides a Text class for basic German text analysis. The class preprocesses
+#    raw text (whitespace normalization, sentence splitting, tokenization,
+#    lemmatization + POS tagging), computes lexical diversity (MTLD, MATTR),
+#    and identifies/counts connectors (conjunctions, subjunctions, adverbial
+#    connectors) based on predefined connector lists.
 # ==========================================
 
 

@@ -1,8 +1,11 @@
 # ToDos
 # ----------
+# progress bar
+#
 # zweiteilige Konnektoren
 #
 # Konnektorenqualität
+# Einsortierung nach Typ???
 #
 # Erkennung Haupt- und Nebensatz
 # -> Wiederholung?

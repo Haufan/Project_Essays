@@ -27,10 +27,16 @@ def main(source):
         text = file.read_text(encoding="utf-8")
 
         obj = Text(id, text)
-        #print(obj.word_count, obj.dif_word_count, obj.word_mtld, obj.word_mattr)
-        print(f"{obj.connectors}\n"
-              f"{obj.connector_count}\n"
-              f"{obj.dif_connector_count}")
+        print(f"Text ID:   {obj.id}\n"
+              f"Anzahl Sätze:   {obj.sentence_count}\n"
+              f"Länge Sätze:   {obj.sentence_lenght}\n"
+              f"Anzahl Wörter:   {obj.word_count}\n"
+              f"Anzahl unterschiedlicher Wörter:   {obj.dif_word_count}\n"
+              f"Measure of Textual Lexical Diversity (0.72):   {obj.word_mtld}\n"
+              f"Moving-Average Type–Token Ratio (50):   {obj.word_mattr}\n"
+              f"Anzahl Konnektoren:   {obj.connector_count}\n"
+              f"Anzahl unterschiedlicher Konnektoren:   {obj.dif_connector_count}\n"
+              f"Anzahl Konnektortyp (KON, SUB, ADV):   {obj.connectors[1]}\n")
 
         quit()
 
