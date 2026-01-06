@@ -24,7 +24,7 @@ from list_connectors import list_connectors
 
 class Text:
     """
-    ???
+    Represents a German text and provides basic linguistic analysis.
     """
 
     def __init__(self, id: str, text: str):
@@ -114,7 +114,7 @@ class Text:
         connector_counter = [0, 0, 0]
         KONJUNKTIONEN = [x for x, _ in self.all_connectors[0]]
         SUBJUNKTIONEN = [x for x, _ in self.all_connectors[1]]
-        ADVERBIALVERBINDUNGEN = [x for x, _ in self.all_connectors[2]]
+        KONJUNKTIONALADVERBIEN = [x for x, _ in self.all_connectors[2]]
 
         for token in self.lemma_pos:
             if token[0] in KONJUNKTIONEN:
@@ -123,7 +123,7 @@ class Text:
             elif token[0] in SUBJUNKTIONEN:
                 connectors.append(token[0])
                 connector_counter[1] += 1
-            elif token[0] in ADVERBIALVERBINDUNGEN:
+            elif token[0] in KONJUNKTIONALADVERBIEN:
                 connectors.append(token[0])
                 connector_counter[2] += 1
 

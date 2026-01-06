@@ -1,6 +1,46 @@
 # ToDos
 # ----------
-# progress bar
+# bei Konnektoren auch POS checken (z.B. bis)
+#
+# weitere: allerdings
+# also
+# andererseits
+# anschließend
+# außerdem
+# beziehungsweise
+# dabei
+# dadurch
+# dafür
+# dagegen
+# damit
+# danach
+# dann
+# darauf
+# darum
+# davor
+# dazu
+# dennoch
+# deshalb
+# deswegen
+# einerseits
+# entweder
+# ferner
+# folglich
+# genauso
+# immerhin
+# inzwischen
+# jedoch
+# schließlich
+# seitdem
+# somit
+# sonst
+# später
+# trotzdem
+# vorher
+# weder … noch
+# zuerst
+# zuvor
+# zwar
 #
 # zweiteilige Konnektoren
 #

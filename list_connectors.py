@@ -40,6 +40,8 @@ def list_connectors():
         ("weil", "A2"),
         ("wenn", "A2"),
         ("ob", "A2"),
+        ("als", "A2"),
+        ("da", "A2"),
 
         ("bevor", "B1"),
         ("nachdem", "B1"),
@@ -47,16 +49,26 @@ def list_connectors():
         ("obwohl", "B1"),
         ("bis", "B1"),
         ("seit", "B1"),
+        ("seitdem", "B1"),
         ("sobald", "B1"),
+        ("solange", "B1"),
         ("damit", "B1"),
         ("sodass", "B1"),
+        ("ehe", "B1"),
+        ("sooft", "B1"),
+        ("soweit", "B1"),
+        ("soviel", "B1"),
 
         ("falls", "B2"),
         ("sofern", "B2"),
-        ("indem", "B2")
+        ("indem", "B2"),
+        ("wohingegen", "B2"),
+        ("wie", "B2"),
+        ("obgleich", "B2"),
+        ("obschon", "B2")
     ]
 
-    ADVERBIALVERBINDUNGEN = [
+    KONJUNKTIONALADVERBIEN = [
         ("danach", "A1"),
         ("zunächst", "A1"),
 
@@ -79,4 +91,4 @@ def list_connectors():
         ("insgesamt", "B2")
     ]
 
-    return(KONJUNKTIONEN, SUBJUNKTIONEN, ADVERBIALVERBINDUNGEN)
+    return(KONJUNKTIONEN, SUBJUNKTIONEN, KONJUNKTIONALADVERBIEN)
