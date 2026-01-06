@@ -1,8 +1,20 @@
+# ToDos
+# ----------
+# zweiteilige Konnektoren
+#
+# Konnektorenqualität
+#
+# Erkennung Haupt- und Nebensatz
+# -> Wiederholung?
+#
+
+# Kommentare
+# ----------
 # ??? Nur Punkte, Komma, Doppelpunkte, ... entfernen (bzw. wird nicht erkannt)
 # ??? ABBREVIATIONS = {"bzw.", "z.B.", "u.a.", "d.h."}
-
+#
 # erkennen von nicht erkannten wörtern
-
+#
 # aspekt der Falschscheibung
 
 

@@ -33,10 +33,12 @@ class Text:
         self.sentence_lenght = round(self.word_count / self.sentence_count, 2)
         self.dif_word_count = len(set(self.text_processing(text)[3]))
         self.lemma_pos = self.text_processing(text)[3] #CCONJ = KonjunKtion, SCONJ = Subjunktion, ADV = Adverbialverbindungen
-        self.list_connectors = list_connectors()
         self.word_mtld = self.mtld(self.lemma_pos)  #[x for x, _ in self.lemma_po])
         self.word_mattr = self.mattr(self.lemma_pos)
-        #self.connector_count =
+        self.all_connectors = list_connectors()
+        self.connectors = self.connector_processing()
+        self.connector_count = len(self.connector_processing()[0])
+        self.dif_connector_count = len(set(self.connector_processing()[0]))
 
 
     def text_processing(self, text):
@@ -98,6 +100,32 @@ class Text:
         return [text, sentences, words, lemma_pos]
 
 
+    def connector_processing(self):
+        """
+        ???
+        :return:
+        """
+
+        connectors = []
+        connector_counter = [0, 0, 0]
+        KONJUNKTIONEN = [x for x, _ in self.all_connectors[0]]
+        SUBJUNKTIONEN = [x for x, _ in self.all_connectors[1]]
+        ADVERBIALVERBINDUNGEN = [x for x, _ in self.all_connectors[2]]
+
+        for token in self.lemma_pos:
+            if token[0] in KONJUNKTIONEN:
+                connectors.append(token[0])
+                connector_counter[0] += 1
+            elif token[0] in SUBJUNKTIONEN:
+                connectors.append(token[0])
+                connector_counter[1] += 1
+            elif token[0] in ADVERBIALVERBINDUNGEN:
+                connectors.append(token[0])
+                connector_counter[2] += 1
+
+        return [connectors, connector_counter]
+
+
     def mtld(self, tokens, t=0.72):
         """
         Compute the Measure of Textual Lexical Diversity (MTLD) for a tokenized text.
@@ -135,7 +163,6 @@ class Text:
         factors = 0.0
         types = set()
         seg_len = 0
-        print(tokens)
 
         for token in tokens:
             seg_len += 1

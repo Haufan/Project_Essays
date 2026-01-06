@@ -27,7 +27,10 @@ def main(source):
         text = file.read_text(encoding="utf-8")
 
         obj = Text(id, text)
-        print(obj.word_count, obj.dif_word_count, obj.word_mtld, obj.word_mattr)
+        #print(obj.word_count, obj.dif_word_count, obj.word_mtld, obj.word_mattr)
+        print(f"{obj.connectors}\n"
+              f"{obj.connector_count}\n"
+              f"{obj.dif_connector_count}")
 
         quit()
 

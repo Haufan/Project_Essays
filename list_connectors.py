@@ -17,58 +17,66 @@ def list_connectors():
     -------
     tuple
         A tuple containing three lists:
-        - KONJUNKTIONEN : list of str
-        - SUBJUNKTIONEN : list of str
-        - ADVERBIALVERBINDUNGEN : list of str
+        - KONJUNKTIONEN : list of tuples [str, str]
+        - SUBJUNKTIONEN : list of tuples [str, str]
+        - ADVERBIALVERBINDUNGEN : list of tuples [str, str]
     """
 
     KONJUNKTIONEN = [
-        "und",
-        "oder",
-        "aber",
-        "denn",
-        "sowie",
-        "sondern",
-        "bzw"
+        ("und", "A1"),
+        ("oder", "A1"),
+        ("aber", "A1"),
+
+        ("denn", "A2"),
+
+        ("sowie", "B1"),
+        ("sondern", "B1"),
+
+        ("bzw.", "B2")
     ]
 
     SUBJUNKTIONEN = [
-        "bevor",
-        "bis",
-        "damit",
-        "dass",
-        "falls",
-        "indem",
-        "nachdem",
-        "ob",
-        "obwohl",
-        "seit",
-        "sobald",
-        "sofern",
-        "sodass",
-        "wenn",
-        "während",
-        "weil"
+        ("dass", "A2"),
+        ("weil", "A2"),
+        ("wenn", "A2"),
+        ("ob", "A2"),
+
+        ("bevor", "B1"),
+        ("nachdem", "B1"),
+        ("während", "B1"),
+        ("obwohl", "B1"),
+        ("bis", "B1"),
+        ("seit", "B1"),
+        ("sobald", "B1"),
+        ("damit", "B1"),
+        ("sodass", "B1"),
+
+        ("falls", "B2"),
+        ("sofern", "B2"),
+        ("indem", "B2")
     ]
 
     ADVERBIALVERBINDUNGEN = [
-        "allerdings",
-        "anschließend",
-        "außerdem",
-        "danach",
-        "daher",
-        "dennoch",
-        "deshalb",
-        "deswegen",
-        "ebenfalls",
-        "folglich",
-        "hingegen",
-        "insgesamt",
-        "schließlich",
-        "somit",
-        "trotzdem",
-        "zudem",
-        "zunächst"
+        ("danach", "A1"),
+        ("zunächst", "A1"),
+
+        ("anschließend", "A2"),
+        ("außerdem", "A2"),
+        ("ebenfalls", "A2"),
+        ("deshalb", "A2"),
+        ("deswegen", "A2"),
+        ("trotzdem", "A2"),
+
+        ("daher", "B1"),
+        ("somit", "B1"),
+        ("dennoch", "B1"),
+        ("hingegen", "B1"),
+        ("zudem", "B1"),
+        ("schließlich", "B1"),
+
+        ("allerdings", "B2"),
+        ("folglich", "B2"),
+        ("insgesamt", "B2")
     ]
 
     return(KONJUNKTIONEN, SUBJUNKTIONEN, ADVERBIALVERBINDUNGEN)
