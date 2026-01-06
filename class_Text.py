@@ -36,7 +36,7 @@ class Text:
         self.word_count = len(self.text_processing(text)[2])
         self.sentence_lenght = round(self.word_count / self.sentence_count, 2)
         self.dif_word_count = len(set(self.text_processing(text)[3]))
-        self.lemma_pos = self.text_processing(text)[3] #CCONJ = KonjunKtion, SCONJ = Subjunktion, ADV = Adverbialverbindungen
+        self.lemma_pos = self.text_processing(text)[3] #CCONJ = Konjunktion, SCONJ = Subjunktion, ADV = Konjunktionaladverbien
         self.word_mtld = self.mtld(self.lemma_pos)  #[x for x, _ in self.lemma_po])
         self.word_mattr = self.mattr(self.lemma_pos)
         self.all_connectors = list_connectors()

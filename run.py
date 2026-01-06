@@ -23,7 +23,7 @@ def main(source):
 
     source_path = Path(source)
 
-    for file in tqdm(source_path.iterdir(), desc="Processing", unit=" texts"):
+    for file in tqdm(source_path.iterdir(), desc="Processing", unit=" texts done"):
         id = re.search(r"(\d+)(?=\.txt$)", str(file)).group(1)
         text = file.read_text(encoding="utf-8")
 
