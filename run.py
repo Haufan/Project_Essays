@@ -1,7 +1,7 @@
 # ==========================================
 # File: run.py
 # Author: Dietmar Benndorf
-# Date: 2026-01-06
+# Date: 2026-01-08
 # Description:
 #    Entry point of the project. Iterates over a directory of German text files,
 #    creates a Text object for each file, and triggers linguistic analysis such

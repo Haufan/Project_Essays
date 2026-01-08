@@ -1,7 +1,7 @@
 # ==========================================
 # File: list_connectors.py
 # Author: Dietmar Benndorf
-# Date: 2026-01-06
+# Date: 2026-01-08
 # Description:
 #    Provides curated lists of German discourse connectors (conjunctions,
 #    subordinating conjunctions, and adverbial connectors) for use in
@@ -9,7 +9,7 @@
 # ==========================================
 
 
-def list_connectors():
+def list_connectors() -> list[list]:
     """
     Return lists of German discourse connectors grouped by grammatical type.
 
@@ -96,4 +96,4 @@ def list_connectors():
         "dennoch": "B2"
     }
 
-    return(KONJUNKTIONEN, SUBJUNKTIONEN, KONJUNKTIONALADVERBIEN)
+    return (KONJUNKTIONEN, SUBJUNKTIONEN, KONJUNKTIONALADVERBIEN)

@@ -1,7 +1,7 @@
 # ==========================================
 # File: class_Text.py
 # Author: Dietmar Benndorf
-# Date: 2026-01-06
+# Date: 2026-01-08
 # Description:
 #    Provides a Text class for basic German text analysis. The class preprocesses
 #    raw text (whitespace normalization, sentence splitting, tokenization,
@@ -21,7 +21,8 @@ import spacy
 import statistics as stats
 import re
 
-from list_connectors import list_connectors
+from resources.list_basic_vocabulary import list_basic_vocabulary
+from resources.list_connectors import list_connectors
 
 
 class Text:
@@ -32,31 +33,31 @@ class Text:
     def __init__(self, id: str, text: str):
         self.id = id
 
-        self.text = self.text_processing(text)[0]
+        self.text = self.get_text_stats(text)[0]
 
-        self.words = self.text_processing(text)[2]
-        self.word_count = len(self.text_processing(text)[2])
-        self.dif_word_count = len(set(self.text_processing(text)[3]))
-        self.lemma_pos = self.text_processing(text)[3]
-        self.word_mtld = self.mtld(self.lemma_pos)  #[x for x, _ in self.lemma_po])
-        self.word_mattr = self.mattr(self.lemma_pos)
+        self.words = self.get_text_stats(text)[2]
+        self.word_count = len(self.get_text_stats(text)[2])
+        self.dif_word_count = len(set(self.get_text_stats(text)[3]))
+        self.lemma_pos = self.get_text_stats(text)[3]
+        self.word_mtld = self.get_mtld(self.lemma_pos)  #[x for x, _ in self.lemma_po])
+        self.word_mattr = self.get_mattr(self.lemma_pos)
 
-        self.sentences = self.text_processing(text)[1]
-        self.sentence_count = len(self.text_processing(text)[1])
+        self.sentences = self.get_text_stats(text)[1]
+        self.sentence_count = len(self.get_text_stats(text)[1])
         self.sentence_lenght = round(self.word_count / self.sentence_count, 2)
         self.sentence_length_stats = self.get_sentence_length_stats(short_lt=6, long_gt=25)
 
         self.all_connectors = list_connectors()
-        self.connectors = self.connector_processing()
-        self.connector_count = len(self.connector_processing()[0])
-        self.connector_count_type = [len(lst) for lst in self.connector_processing()[1]]
-        self.dif_connector_count_type = [len(set(lst)) for lst in self.connector_processing()[1]]
+        self.connectors = self.get_connector_stats()
+        self.connector_count = len(self.get_connector_stats()[0])
+        self.connector_count_type = [len(lst) for lst in self.get_connector_stats()[1]]
+        self.dif_connector_count_type = [len(set(lst)) for lst in self.get_connector_stats()[1]]
         self.connector_per_sentence = round(self.connector_count / self.sentence_count, 2)
-        self.connector_stats = self.connector_processing()[3]
-        self.connector_score_level = self.connector_processing()[2]
+        self.connector_stats = self.get_connector_stats()[3]
+        self.connector_score_level = self.get_connector_stats()[2]
 
 
-    def text_processing(self, text: str):
+    def get_text_stats(self, text: str):
         """
         Preprocess a German text and return multiple linguistic representations.
 
@@ -176,7 +177,7 @@ class Text:
         }
 
 
-    def connector_processing(self) -> list:
+    def get_connector_stats(self) -> list:
         """
         Extract connectors from lemma/POS tuples, compute a CEFR-based connector score,
         and compute connector frequency statistics.
@@ -211,7 +212,7 @@ class Text:
                 connectors.append(token[0])
                 connector_type[2].append(token[0])
                 connector_score.append(CONNECTOR_LEVEL[token[0]])
-        connector_score = self.score_levels(connector_score)
+        connector_score = self.get_score_levels(connector_score)
 
         freq = Counter(connectors)  # counts per connector token
         unique_used = len(freq)  # number of distinct connectors used
@@ -235,7 +236,7 @@ class Text:
         return [connectors, connector_type, connector_score, stats]
 
 
-    def score_levels(self, levels: list[str]) -> float:
+    def get_score_levels(self, levels: list[str]) -> float:
         """
         Convert CEFR levels (A1–C2) into numeric scores and return the total.
 
@@ -268,7 +269,7 @@ class Text:
         return score
 
 
-    def mtld(self, tokens: list[str], t=0.72) -> float:
+    def get_mtld(self, tokens: list[str], t=0.72) -> float:
         """
         Compute the Measure of Textual Lexical Diversity (MTLD) for a tokenized text.
 
@@ -325,10 +326,10 @@ class Text:
         #return len(tokens) / factors if factors > 0 else 0.0
         # bidirectional
         return round((len(tokens) / factors if factors > 0 else 0.0 +
-               self.mtld(list(reversed(tokens)), t)) / 2, 2)
+               self.get_mtld(list(reversed(tokens)), t)) / 2, 2)
 
 
-    def mattr(self, tokens: list[str], window_size=50) -> float:
+    def get_mattr(self, tokens: list[str], window_size=50) -> float:
         """
         Compute the Moving-Average Type–Token Ratio (MATTR) for a tokenized text.
 
