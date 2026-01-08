@@ -21,8 +21,8 @@ import spacy
 import statistics as stats
 import re
 
-from resources.list_basic_vocabulary import list_basic_vocabulary
-from resources.list_connectors import list_connectors
+from resources.list_basic_vocabulary import get_basic_vocabulary
+from resources.list_connectors import get_connectors
 
 
 class Text:
@@ -35,19 +35,21 @@ class Text:
 
         self.text = self.get_text_stats(text)[0]
 
+        self.basic_vocab = [w.lower() for w in get_basic_vocabulary()]
         self.words = self.get_text_stats(text)[2]
         self.word_count = len(self.get_text_stats(text)[2])
         self.dif_word_count = len(set(self.get_text_stats(text)[3]))
         self.lemma_pos = self.get_text_stats(text)[3]
         self.word_mtld = self.get_mtld(self.lemma_pos)  #[x for x, _ in self.lemma_po])
         self.word_mattr = self.get_mattr(self.lemma_pos)
+        self.word_stats = self.get_word_stats(self.lemma_pos)
 
         self.sentences = self.get_text_stats(text)[1]
         self.sentence_count = len(self.get_text_stats(text)[1])
         self.sentence_lenght = round(self.word_count / self.sentence_count, 2)
         self.sentence_length_stats = self.get_sentence_length_stats(short_lt=6, long_gt=25)
 
-        self.all_connectors = list_connectors()
+        self.all_connectors = get_connectors()
         self.connectors = self.get_connector_stats()
         self.connector_count = len(self.get_connector_stats()[0])
         self.connector_count_type = [len(lst) for lst in self.get_connector_stats()[1]]
@@ -114,6 +116,18 @@ class Text:
                 ]
 
         return [text, sentences, words, lemma_pos]
+
+    def get_word_stats(self, tokens: list[tuple]):
+        """
+        ???
+        """
+        if not tokens:
+            return 0.0
+
+        words = [x for x, _ in tokens]
+        in_basic = sum(1 for w in words if w in self.basic_vocab)
+
+        return round((in_basic / len(tokens)), 2)
 
 
     def get_sentence_length_stats(self, short_lt: int = 6, long_gt: int = 25) -> dict:

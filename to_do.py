@@ -6,6 +6,7 @@
 # Satz
 #    Hauptsatz / Nebensatz
 #    Schachtelkonstruktionen
+#    Verbal- Nominalstrukturen
 #    Wiederholungen
 #
 # Konnektoren

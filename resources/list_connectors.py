@@ -9,7 +9,7 @@
 # ==========================================
 
 
-def list_connectors() -> list[list]:
+def get_connectors() -> list[list]:
     """
     Return lists of German discourse connectors grouped by grammatical type.
 
