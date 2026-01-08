@@ -45,6 +45,7 @@ def main(source):
                                                  f"{obj.sentence_length_stats['std']}\n"
               f"   Anteil kurze | lange Sätze:   {obj.sentence_length_stats['share_short']} | "
                                              f"{obj.sentence_length_stats['share_long']}\n"
+              f"   Anzahl Nebensätze:   todo\n"
               f"   Wiederholungen:   todo\n\n"
               f"KONNEKTORSTATISTIK\n"
               f"   Anzahl Konnektoren:   {obj.connector_count}\n"

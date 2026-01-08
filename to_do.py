@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     nlp = spacy.load("de_core_news_sm")   # md = medium, lg = large
 
-    text = "Er hat weder ein Auto, noch ein Fahrrad."
+    text = "Das ist hellblau."
     doc = nlp(text)
 
     # ??? Nur Punkte, Komma, Doppelpunkte, ... entfernen (bzw. wird nicht erkannt)
