@@ -16,6 +16,7 @@ def get_basic_vocabulary() -> list:
     Source:
     Ministerium für Bildung, Jugend und Sport des Landes Brandenburg (MBJS),
     Grundwortschatz für Brandenburg, Gesamtkorpus 2024.
+    https://bildungsserver.berlin-brandenburg.de/fileadmin/bbb/unterricht/faecher/sprachen/deutsch/schreiben_rechtschreiben/GWS_Gesamtkorpus_2024.pdf
 
     Returns
     -------
