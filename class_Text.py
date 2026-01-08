@@ -11,12 +11,14 @@
 # ==========================================
 
 
+from collections import Counter
 import nltk
 #nltk.download("punkt")
 #nltk.download('punkt_tab')
 from nltk.tokenize import sent_tokenize
 from nltk.tokenize import word_tokenize
 import spacy
+import statistics as stats
 import re
 
 from list_connectors import list_connectors
@@ -29,23 +31,32 @@ class Text:
 
     def __init__(self, id: str, text: str):
         self.id = id
+
         self.text = self.text_processing(text)[0]
-        self.sentences = self.text_processing(text)[1]
-        self.sentence_count = len(self.text_processing(text)[1])
+
         self.words = self.text_processing(text)[2]
         self.word_count = len(self.text_processing(text)[2])
-        self.sentence_lenght = round(self.word_count / self.sentence_count, 2)
         self.dif_word_count = len(set(self.text_processing(text)[3]))
-        self.lemma_pos = self.text_processing(text)[3] #CCONJ = Konjunktion, SCONJ = Subjunktion, ADV = Konjunktionaladverbien
+        self.lemma_pos = self.text_processing(text)[3]
         self.word_mtld = self.mtld(self.lemma_pos)  #[x for x, _ in self.lemma_po])
         self.word_mattr = self.mattr(self.lemma_pos)
+
+        self.sentences = self.text_processing(text)[1]
+        self.sentence_count = len(self.text_processing(text)[1])
+        self.sentence_lenght = round(self.word_count / self.sentence_count, 2)
+        self.sentence_length_stats = self.get_sentence_length_stats(short_lt=6, long_gt=25)
+
         self.all_connectors = list_connectors()
         self.connectors = self.connector_processing()
         self.connector_count = len(self.connector_processing()[0])
-        self.dif_connector_count = len(set(self.connector_processing()[0]))
+        self.connector_count_type = [len(lst) for lst in self.connector_processing()[1]]
+        self.dif_connector_count_type = [len(set(lst)) for lst in self.connector_processing()[1]]
+        self.connector_per_sentence = round(self.connector_count / self.sentence_count, 2)
+        self.connector_stats = self.connector_processing()[3]
+        self.connector_score_level = self.connector_processing()[2]
 
 
-    def text_processing(self, text):
+    def text_processing(self, text: str):
         """
         Preprocess a German text and return multiple linguistic representations.
 
@@ -104,33 +115,160 @@ class Text:
         return [text, sentences, words, lemma_pos]
 
 
-    def connector_processing(self):
+    def get_sentence_length_stats(self, short_lt: int = 6, long_gt: int = 25) -> dict:
         """
-        ???
-        :return:
+        Compute sentence length statistics.
+
+        Parameters
+        ----------
+        short_lt : int
+            Threshold: sentences with fewer than this number of words are "short".
+        long_gt : int
+            Threshold: sentences with more than this number of words are "long".
+
+        Returns
+        -------
+        dict
+            Sentence length metrics (mean/median/std/min/max + share short/long).
+        """
+        if not self.sentences:
+            return {
+                "n_sentences": 0,
+                "lengths": [],
+                "mean": 0,
+                "median": 0,
+                "std": 0,
+                "min": 0,
+                "max": 0,
+                "short_lt": short_lt,
+                "long_gt": long_gt,
+                "share_short": 0,
+                "share_long": 0,
+            }
+
+        lengths = []
+        for s in self.sentences:
+            ws = [w for w in word_tokenize(s, language="german") if w.isalpha()]
+            lengths.append(len(ws))
+
+        n = len(lengths)
+        mean = sum(lengths) / n
+        median = stats.median(lengths)
+        std = stats.pstdev(lengths)
+        min_len = min(lengths)
+        max_len = max(lengths)
+
+        short_count = sum(1 for L in lengths if L < short_lt)
+        long_count = sum(1 for L in lengths if L > long_gt)
+
+        return {
+            "n_sentences": n,
+            "lengths": lengths,
+            "mean": round(mean, 2),
+            "median": round(median, 2),
+            "std": round(std, 2),
+            "min": min_len,
+            "max": max_len,
+            "short_lt": short_lt,
+            "long_gt": long_gt,
+            "share_short": round(short_count / n, 3),
+            "share_long": round(long_count / n, 3),
+        }
+
+
+    def connector_processing(self) -> list:
+        """
+        Extract connectors from lemma/POS tuples, compute a CEFR-based connector score,
+        and compute connector frequency statistics.
+
+        Returns
+        -------
+        list
+            [connectors, connector_type, connector_score, stats]
+            where stats is a dict with percentages for connectors used once and >3 times.
         """
 
         connectors = []
-        connector_counter = [0, 0, 0]
-        KONJUNKTIONEN = [x for x, _ in self.all_connectors[0]]
-        SUBJUNKTIONEN = [x for x, _ in self.all_connectors[1]]
-        KONJUNKTIONALADVERBIEN = [x for x, _ in self.all_connectors[2]]
+        connector_type = [[], [], []]
+        connector_score = []
+        KONJUNKTIONEN = list(self.all_connectors[0])
+        SUBJUNKTIONEN = list(self.all_connectors[1])
+        KONJUNKTIONALADVERBIEN = list(self.all_connectors[2])
+        CONNECTOR_LEVEL = ((self.all_connectors[0] |
+                           self.all_connectors[1]) |
+                           self.all_connectors[2])
 
         for token in self.lemma_pos:
-            if token[0] in KONJUNKTIONEN:
+            if token[0] in KONJUNKTIONEN and token[1] == "CCONJ":
                 connectors.append(token[0])
-                connector_counter[0] += 1
-            elif token[0] in SUBJUNKTIONEN:
+                connector_type[0].append(token[0])
+                connector_score.append(CONNECTOR_LEVEL[token[0]])
+            elif token[0] in SUBJUNKTIONEN and token[1] == "SCONJ":
                 connectors.append(token[0])
-                connector_counter[1] += 1
-            elif token[0] in KONJUNKTIONALADVERBIEN:
+                connector_type[1].append(token[0])
+                connector_score.append(CONNECTOR_LEVEL[token[0]])
+            elif token[0] in KONJUNKTIONALADVERBIEN and token[1] == "ADV":
                 connectors.append(token[0])
-                connector_counter[2] += 1
+                connector_type[2].append(token[0])
+                connector_score.append(CONNECTOR_LEVEL[token[0]])
+        connector_score = self.score_levels(connector_score)
 
-        return [connectors, connector_counter]
+        freq = Counter(connectors)  # counts per connector token
+        unique_used = len(freq)  # number of distinct connectors used
+
+        if unique_used == 0:
+            pct_once = 0.0
+            pct_more_than_3 = 0.0
+        else:
+            once = sum(1 for c in freq.values() if c == 1)
+            more_than_3 = sum(1 for c in freq.values() if c > 3)
+
+            pct_once = round((once / unique_used) * 100, 2)
+            pct_more_than_3 = round((more_than_3 / unique_used) * 100, 2)
+
+        stats = {
+            "unique_connectors_used": unique_used,
+            "pct_connectors_used_once": pct_once,
+            "pct_connectors_used_more_than_3": pct_more_than_3,
+        }
+
+        return [connectors, connector_type, connector_score, stats]
 
 
-    def mtld(self, tokens, t=0.72):
+    def score_levels(self, levels: list[str]) -> float:
+        """
+        Convert CEFR levels (A1–C2) into numeric scores and return the total.
+
+        Parameters
+        ----------
+        levels : list of str
+            CEFR level labels (e.g., ["A2", "B1", "C1"]).
+
+        Returns
+        -------
+        float
+            Average numeric CEFR score
+        """
+
+
+        LEVEL_SCORES = {
+            "A1": 0,
+            "A2": 1,
+            "B1": 2,
+            "B2": 3,
+            "C1": 4,
+            "C2": 5,
+        }
+        total = 0
+
+        for level in levels:
+            total += LEVEL_SCORES.get(level, 0)
+        score = total / len(levels)
+
+        return score
+
+
+    def mtld(self, tokens: list[str], t=0.72) -> float:
         """
         Compute the Measure of Textual Lexical Diversity (MTLD) for a tokenized text.
 
@@ -190,7 +328,7 @@ class Text:
                self.mtld(list(reversed(tokens)), t)) / 2, 2)
 
 
-    def mattr(self, tokens, window_size=50):
+    def mattr(self, tokens: list[str], window_size=50) -> float:
         """
         Compute the Moving-Average Type–Token Ratio (MATTR) for a tokenized text.
 

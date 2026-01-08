@@ -28,18 +28,36 @@ def main(source):
         text = file.read_text(encoding="utf-8")
 
         obj = Text(id, text)
-        '''print(f"Text ID:   {obj.id}\n"
-              f"Anzahl Sätze:   {obj.sentence_count}\n"
-              f"Länge Sätze:   {obj.sentence_lenght}\n"
-              f"Anzahl Wörter:   {obj.word_count}\n"
-              f"Anzahl unterschiedlicher Wörter:   {obj.dif_word_count}\n"
-              f"Measure of Textual Lexical Diversity (0.72):   {obj.word_mtld}\n"
-              f"Moving-Average Type–Token Ratio (50):   {obj.word_mattr}\n"
-              f"Anzahl Konnektoren:   {obj.connector_count}\n"
-              f"Anzahl unterschiedlicher Konnektoren:   {obj.dif_connector_count}\n"
-              f"Anzahl Konnektortyp (KON, SUB, ADV):   {obj.connectors[1]}\n")
+        print(f"\nText ID:   {obj.id}\n"
+              f"###################\n\n"
+              f"WORTSTATISTIK\n"
+              f"   Anzahl Wörter:   {obj.word_count}\n"
+              f"   Anzahl unterschiedlicher Wörter:   {obj.dif_word_count}\n"
+              f"   Measure of Textual Lexical Diversity (0.72):   {obj.word_mtld}\n"
+              f"   Moving-Average Type–Token Ratio (50):   {obj.word_mattr}\n\n"
+              f"SATZTATISTIK\n"
+              f"   Anzahl Sätze:   {obj.sentence_length_stats['n_sentences']}\n"
+              f"   Länge Sätze (MEAN | MED | STD):   {obj.sentence_length_stats['mean']} | "
+                                                 f"{obj.sentence_length_stats['median']} | "
+                                                 f"{obj.sentence_length_stats['std']}\n"
+              f"   Anteil kurze | lange Sätze:   {obj.sentence_length_stats['share_short']} | "
+                                             f"{obj.sentence_length_stats['share_long']}\n\n"
+              f"KONNEKTORSTATISTIK\n"
+              f"   Anzahl Konnektoren:   {obj.connector_count}\n"
+              f"   Anzahl unterschiedlicher Konnektoren:   {obj.connector_stats['unique_connectors_used']}\n"
+              f"   Anzahl Konnektortyp (KON | SUB | ADV):   {obj.connector_count_type[0]} | "
+                                                          f"{obj.connector_count_type[1]} | "
+                                                          f"{obj.connector_count_type[2]}\n"
+              f"   Anzahl unterschiedlicher Konnektoren (KON | SUB | ADV):   {obj.dif_connector_count_type[0]} | "
+                                                          f"{obj.dif_connector_count_type[1]} | "
+                                                          f"{obj.dif_connector_count_type[2]}\n"
+              f"   Konnektoren pro Satz:   {obj.connector_per_sentence}\n"
+              f"   Anteil 1x | >3x Nutzung:   {obj.connector_stats['pct_connectors_used_once']} | "
+                                            f"{obj.connector_stats['pct_connectors_used_more_than_3']}\n"
+              f"   Konnektor Score (Level):   {obj.connector_score_level}\n"
+              )
 
-        quit()'''
+        quit()
 
 
 if __name__ == "__main__":

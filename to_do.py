@@ -1,56 +1,19 @@
 # ToDos
 # ----------
-# bei Konnektoren auch POS checken (z.B. bis)
+# Wort
+#    Wort Score (Level, Grundwortschatz)
 #
-# weitere: allerdings
-# also
-# andererseits
-# anschließend
-# außerdem
-# beziehungsweise
-# dabei
-# dadurch
-# dafür
-# dagegen
-# damit
-# danach
-# dann
-# darauf
-# darum
-# davor
-# dazu
-# dennoch
-# deshalb
-# deswegen
-# einerseits
-# entweder
-# ferner
-# folglich
-# genauso
-# immerhin
-# inzwischen
-# jedoch
-# schließlich
-# seitdem
-# somit
-# sonst
-# später
-# trotzdem
-# vorher
-# weder … noch
-# zuerst
-# zuvor
-# zwar
+# Satz
+#    Hauptsatz / Nebensatz
+#    Schachtelkonstruktionen
+#    Wiederholungen
 #
-# zweiteilige Konnektoren
+# Konnektoren
+#    zweiteilige Konnektoren
 #
-# Konnektorenqualität
-# Einsortierung nach Typ???
+# Umbau Ausgabe in dicts
 #
-# Erkennung Haupt- und Nebensatz
-# -> Wiederholung?
 #
-
 # Kommentare
 # ----------
 # ??? Nur Punkte, Komma, Doppelpunkte, ... entfernen (bzw. wird nicht erkannt)
@@ -69,7 +32,7 @@ if __name__ == "__main__":
 
     nlp = spacy.load("de_core_news_sm")   # md = medium, lg = large
 
-    text = "Der Fahrer bzw die Fahrerin fuhren schnell nach Hause und in die Wohnung. Ich habe das Auto gesehen. Das Fahren ist gut."
+    text = "Er hat weder ein Auto, noch ein Fahrrad."
     doc = nlp(text)
 
     # ??? Nur Punkte, Komma, Doppelpunkte, ... entfernen (bzw. wird nicht erkannt)

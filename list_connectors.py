@@ -22,73 +22,78 @@ def list_connectors():
         - ADVERBIALVERBINDUNGEN : list of tuples [str, str]
     """
 
-    KONJUNKTIONEN = [
-        ("und", "A1"),
-        ("oder", "A1"),
-        ("aber", "A1"),
+    KONJUNKTIONEN = {
+        "und": "A1",
+        "oder": "A1",
+        "aber": "A1",
 
-        ("denn", "A2"),
+        "denn": "A2",
 
-        ("sowie", "B1"),
-        ("sondern", "B1"),
+        "sowie": "B1",
+        "sondern": "B1",
 
-        ("bzw.", "B2")
-    ]
+        "bzw.": "B2"
+    }
 
-    SUBJUNKTIONEN = [
-        ("dass", "A2"),
-        ("weil", "A2"),
-        ("wenn", "A2"),
-        ("ob", "A2"),
-        ("als", "A2"),
-        ("da", "A2"),
+    SUBJUNKTIONEN = {
+        "dass": "A2",
+        "weil": "A2",
+        "wenn": "A2",
+        "als": "A2",
+        "da": "A2",
 
-        ("bevor", "B1"),
-        ("nachdem", "B1"),
-        ("während", "B1"),
-        ("obwohl", "B1"),
-        ("bis", "B1"),
-        ("seit", "B1"),
-        ("seitdem", "B1"),
-        ("sobald", "B1"),
-        ("solange", "B1"),
-        ("damit", "B1"),
-        ("sodass", "B1"),
-        ("ehe", "B1"),
-        ("sooft", "B1"),
-        ("soweit", "B1"),
-        ("soviel", "B1"),
+        "während": "B1",
+        "damit": "B1",
+        "sodass": "B1",
+        "obwohl": "B1",
+        "indem": "B1",
+        "solange": "B1",
+        "seit": "B1",
+        "seitdem": "B1",
+        "bis": "B1",
+        "bevor": "B1",
+        "ehe": "B1",
+        "nachdem": "B1",
+        "sobald": "B1",
 
-        ("falls", "B2"),
-        ("sofern", "B2"),
-        ("indem", "B2"),
-        ("wohingegen", "B2"),
-        ("wie", "B2"),
-        ("obgleich", "B2"),
-        ("obschon", "B2")
-    ]
+        "falls": "B2",
+        "sofern": "B2",
+        "wohingegen": "B2",
+        "wogegen": "B2",
+        "obgleich": "B2",
+        "obschon": "B2",
+        "wie": "B2",
+        "je": "B2",
+        "zumal": "B2"
+    }
 
-    KONJUNKTIONALADVERBIEN = [
-        ("danach", "A1"),
-        ("zunächst", "A1"),
+    KONJUNKTIONALADVERBIEN = {
+        "dann": "A1",
 
-        ("anschließend", "A2"),
-        ("außerdem", "A2"),
-        ("ebenfalls", "A2"),
-        ("deshalb", "A2"),
-        ("deswegen", "A2"),
-        ("trotzdem", "A2"),
+        "danach": "A2",
+        "davor": "A2",
+        "anschließend": "A2",
+        "deshalb": "A2",
+        "deswegen": "A2",
+        "darum": "A2",
+        "inzwischen": "A2",
 
-        ("daher", "B1"),
-        ("somit", "B1"),
-        ("dennoch", "B1"),
-        ("hingegen", "B1"),
-        ("zudem", "B1"),
-        ("schließlich", "B1"),
+        "dagegen": "B1",
+        "stattdessen": "B1",
+        "daher": "B1",
+        "währenddessen": "B1",
+        "nämlich": "B1",
+        "sonst": "B1",
+        "trotzdem": "B1",
 
-        ("allerdings", "B2"),
-        ("folglich", "B2"),
-        ("insgesamt", "B2")
-    ]
+        "folglich": "B2",
+        "infolgedessen": "B2",
+        "demzufolge": "B2",
+        "andernfalls": "B2",
+        "gleichwohl": "B2",
+        "allerdings": "B2",
+        "nichtsdestotrotz": "B2",
+        "dennoch": "B2"
+    }
 
     return(KONJUNKTIONEN, SUBJUNKTIONEN, KONJUNKTIONALADVERBIEN)
