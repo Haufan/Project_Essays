@@ -2,6 +2,7 @@
 # ----------
 # Wort
 #    Wort Score (Level, Grundwortschatz)
+#    Wortlänge
 #
 # Satz
 #    Hauptsatz / Nebensatz

@@ -31,6 +31,58 @@ class Text:
     """
 
     def __init__(self, id: str, text: str):
+
+        # --- normalize text early ---
+        text = text.replace("\u00A0", " ")   # non-breaking space entfernen
+        text = re.sub(r"\s+", " ", text).strip()
+
+        # zusätzlich: prüfen, ob überhaupt alphabetische Zeichen existieren
+        if not text or not re.search(r"[A-Za-zÄÖÜäöüß]", text):
+            text = ""
+
+        # --- FALL: leere Datei / kein Text ---
+        if not text:
+            self.id = id
+
+            self.text = ""
+            self.words = []
+            self.word_count = 0
+            self.dif_word_count = 0
+            self.lemma_pos = []
+
+            self.word_mtld = 0.0
+            self.word_mattr = 0.0
+            self.word_stats = 0.0
+
+            self.sentences = []
+            self.sentence_count = 0
+            self.sentence_lenght = 0.0
+            self.sentence_length_stats = {
+                "n_sentences": 0,
+                "mean": 0,
+                "median": 0,
+                "std": 0,
+                "min": 0,
+                "max": 0,
+                "share_short": 0,
+                "share_long": 0,
+            }
+
+            self.connectors = []
+            self.connector_count = 0
+            self.connector_count_type = [0, 0, 0]
+            self.dif_connector_count_type = [0, 0, 0]
+            self.connector_per_hundred = 0.0
+            self.connector_stats = {
+                "unique_connectors_used": 0,
+                "pct_connectors_used_once": 0.0,
+                "pct_connectors_used_more_than_3": 0.0,
+            }
+            self.connector_score_level = 0.0
+
+            return  # <-- WICHTIG: keine weitere Berechnung
+
+
         self.id = id
 
         self.text = self.get_text_stats(text)[0]
@@ -54,9 +106,9 @@ class Text:
         self.connector_count = len(self.get_connector_stats()[0])
         self.connector_count_type = [len(lst) for lst in self.get_connector_stats()[1]]
         self.dif_connector_count_type = [len(set(lst)) for lst in self.get_connector_stats()[1]]
-        self.connector_per_sentence = round(self.connector_count / self.sentence_count, 2)
+        self.connector_per_hundred = round((self.connector_count / len(self.words)) * 100, 2)
         self.connector_stats = self.get_connector_stats()[3]
-        self.connector_score_level = self.get_connector_stats()[2]
+        self.connector_score_level = round(self.get_connector_stats()[2], 2)
 
 
     def get_text_stats(self, text: str):
@@ -243,8 +295,8 @@ class Text:
 
         stats = {
             "unique_connectors_used": unique_used,
-            "pct_connectors_used_once": pct_once,
-            "pct_connectors_used_more_than_3": pct_more_than_3,
+            "pct_connectors_used_once": pct_once / 100,
+            "pct_connectors_used_more_than_3": pct_more_than_3 / 100,
         }
 
         return [connectors, connector_type, connector_score, stats]
@@ -275,6 +327,9 @@ class Text:
             "C2": 5,
         }
         total = 0
+
+        if not levels:  # <-- wichtig
+            return 0.0
 
         for level in levels:
             total += LEVEL_SCORES.get(level, 0)
@@ -317,30 +372,34 @@ class Text:
         Behavior Research Methods, 42(2), 381–392.
         """
 
-        factors = 0.0
-        types = set()
-        seg_len = 0
+        def mtld_one_direction(seq, t=0.72) -> float:
+            if not seq:
+                return 0.0
 
-        for token in tokens:
-            seg_len += 1
-            types.add(token)
-            ttr = len(types) / seg_len
-            if ttr <= t:
-                factors += 1.0
-                types.clear()
-                seg_len = 0
+            factors = 0.0
+            types = set()
+            seg_len = 0
 
-        # partial factor
-        if seg_len > 0:
-            ttr_end = len(types) / seg_len
-            # avoid division issues if t==1
-            partial = (1.0 - ttr_end) / (1.0 - t)
-            factors += partial
+            for tok in seq:
+                seg_len += 1
+                types.add(tok)
+                ttr = len(types) / seg_len
+                if ttr <= t:
+                    factors += 1.0
+                    types.clear()
+                    seg_len = 0
 
-        #return len(tokens) / factors if factors > 0 else 0.0
-        # bidirectional
-        return round((len(tokens) / factors if factors > 0 else 0.0 +
-               self.get_mtld(list(reversed(tokens)), t)) / 2, 2)
+            # partial factor
+            if seg_len > 0:
+                ttr_end = len(types) / seg_len
+                partial = (1.0 - ttr_end) / (1.0 - t) if t != 1 else 0.0
+                factors += partial
+
+            return (len(seq) / factors) if factors > 0 else 0.0
+
+        forward = mtld_one_direction(tokens, t)
+        backward = mtld_one_direction(list(reversed(tokens)), t)
+        return round((forward + backward) / 2, 2)
 
 
     def get_mattr(self, tokens: list[str], window_size=50) -> float:
