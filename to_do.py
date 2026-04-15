@@ -1,5 +1,10 @@
 # ToDos
 # ----------
+#
+# 1.) Datenauswertung nach Versuch + alle
+# 2.) Art der Konnektoren hinzufügen - Programm anpassen
+# 3.) Wiederholung
+#
 # Wort
 #    Wort Score (Level, Grundwortschatz)
 #    Wortlänge

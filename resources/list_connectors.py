@@ -3,97 +3,96 @@
 # Author: Dietmar Benndorf
 # Date: 2026-01-08
 # Description:
-#    Provides curated lists of German discourse connectors (conjunctions,
-#    subordinating conjunctions, and adverbial connectors) for use in
-#    linguistic text analysis.
+#    Provides curated lists of German discourse connectors with
+#    CEFR level and discourse function.
 # ==========================================
 
 
-def get_connectors() -> list[list]:
+def get_connectors() -> tuple[dict, dict, dict]:
     """
-    Return lists of German discourse connectors grouped by grammatical type.
+    Return dictionaries of German discourse connectors grouped by grammatical type.
 
     Returns
     -------
     tuple
-        A tuple containing three lists:
-        - KONJUNKTIONEN : list of tuples [str, str]
-        - SUBJUNKTIONEN : list of tuples [str, str]
-        - ADVERBIALVERBINDUNGEN : list of tuples [str, str]
+        (KONJUNKTIONEN, SUBJUNKTIONEN, KONJUNKTIONALADVERBIEN)
+
+        Each dictionary maps:
+            connector -> (CEFR_level, function)
     """
 
     KONJUNKTIONEN = {
-        "und": "A1",
-        "oder": "A1",
-        "aber": "A1",
+        "und": ("A1", "additiv"),
+        "oder": ("A1", "alternativ"),
+        "aber": ("A1", "adversativ"),
 
-        "denn": "A2",
+        "denn": ("A2", "kausal"),
 
-        "sowie": "B1",
-        "sondern": "B1",
+        "sowie": ("B1", "additiv"),
+        "sondern": ("B1", "adversativ"),
 
-        "bzw.": "B2"
+        "bzw.": ("B2", "alternativ")
     }
 
     SUBJUNKTIONEN = {
-        "dass": "A2",
-        "weil": "A2",
-        "wenn": "A2",
-        "als": "A2",
-        "da": "A2",
+        "dass": ("A2", "komplement"),
+        "weil": ("A2", "kausal"),
+        "wenn": ("A2", "konditional"),
+        "als": ("A2", "temporal"),
+        "da": ("A2", "kausal"),
 
-        "während": "B1",
-        "damit": "B1",
-        "sodass": "B1",
-        "obwohl": "B1",
-        "indem": "B1",
-        "solange": "B1",
-        "seit": "B1",
-        "seitdem": "B1",
-        "bis": "B1",
-        "bevor": "B1",
-        "ehe": "B1",
-        "nachdem": "B1",
-        "sobald": "B1",
+        "während": ("B1", "temporal"),
+        "damit": ("B1", "final"),
+        "sodass": ("B1", "konsekutiv"),
+        "obwohl": ("B1", "konzessiv"),
+        "indem": ("B1", "modal"),
+        "solange": ("B1", "temporal"),
+        "seit": ("B1", "temporal"),
+        "seitdem": ("B1", "temporal"),
+        "bis": ("B1", "temporal"),
+        "bevor": ("B1", "temporal"),
+        "ehe": ("B1", "temporal"),
+        "nachdem": ("B1", "temporal"),
+        "sobald": ("B1", "temporal"),
 
-        "falls": "B2",
-        "sofern": "B2",
-        "wohingegen": "B2",
-        "wogegen": "B2",
-        "obgleich": "B2",
-        "obschon": "B2",
-        "wie": "B2",
-        "je": "B2",
-        "zumal": "B2"
+        "falls": ("B2", "konditional"),
+        "sofern": ("B2", "konditional"),
+        "wohingegen": ("B2", "adversativ"),
+        "wogegen": ("B2", "adversativ"),
+        "obgleich": ("B2", "konzessiv"),
+        "obschon": ("B2", "konzessiv"),
+        "wie": ("B2", "vergleichend"),
+        "je": ("B2", "konditional"),
+        "zumal": ("B2", "kausal")
     }
 
     KONJUNKTIONALADVERBIEN = {
-        "dann": "A1",
+        "dann": ("A1", "temporal"),
 
-        "danach": "A2",
-        "davor": "A2",
-        "anschließend": "A2",
-        "deshalb": "A2",
-        "deswegen": "A2",
-        "darum": "A2",
-        "inzwischen": "A2",
+        "danach": ("A2", "temporal"),
+        "davor": ("A2", "temporal"),
+        "anschließend": ("A2", "temporal"),
+        "deshalb": ("A2", "kausal"),
+        "deswegen": ("A2", "kausal"),
+        "darum": ("A2", "kausal"),
+        "inzwischen": ("A2", "temporal"),
 
-        "dagegen": "B1",
-        "stattdessen": "B1",
-        "daher": "B1",
-        "währenddessen": "B1",
-        "nämlich": "B1",
-        "sonst": "B1",
-        "trotzdem": "B1",
+        "dagegen": ("B1", "adversativ"),
+        "stattdessen": ("B1", "adversativ"),
+        "daher": ("B1", "konsekutiv"),
+        "währenddessen": ("B1", "temporal"),
+        "nämlich": ("B1", "explikativ"),
+        "sonst": ("B1", "konditional"),
+        "trotzdem": ("B1", "konzessiv"),
 
-        "folglich": "B2",
-        "infolgedessen": "B2",
-        "demzufolge": "B2",
-        "andernfalls": "B2",
-        "gleichwohl": "B2",
-        "allerdings": "B2",
-        "nichtsdestotrotz": "B2",
-        "dennoch": "B2"
+        "folglich": ("B2", "konsekutiv"),
+        "infolgedessen": ("B2", "konsekutiv"),
+        "demzufolge": ("B2", "konsekutiv"),
+        "andernfalls": ("B2", "konditional"),
+        "gleichwohl": ("B2", "konzessiv"),
+        "allerdings": ("B2", "adversativ"),
+        "nichtsdestotrotz": ("B2", "konzessiv"),
+        "dennoch": ("B2", "konzessiv")
     }
 
     return (KONJUNKTIONEN, SUBJUNKTIONEN, KONJUNKTIONALADVERBIEN)

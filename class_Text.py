@@ -302,21 +302,21 @@ class Text:
         return [connectors, connector_type, connector_score, stats]
 
 
-    def get_score_levels(self, levels: list[str]) -> float:
+    def get_score_levels(self, levels: list[tuple[str, str]]) -> float:
         """
-        Convert CEFR levels (A1–C2) into numeric scores and return the total.
+        Convert CEFR levels (A1–C2) from connector tuples into numeric scores
+        and return the average score.
 
         Parameters
         ----------
-        levels : list of str
-            CEFR level labels (e.g., ["A2", "B1", "C1"]).
+        levels : list of tuple
+            List of tuples like ("A2", "kausal").
 
         Returns
         -------
         float
             Average numeric CEFR score
         """
-
 
         LEVEL_SCORES = {
             "A1": 0,
@@ -326,13 +326,15 @@ class Text:
             "C1": 4,
             "C2": 5,
         }
-        total = 0
 
-        if not levels:  # <-- wichtig
+        if not levels:
             return 0.0
 
-        for level in levels:
+        total = 0
+
+        for level, _ in levels:
             total += LEVEL_SCORES.get(level, 0)
+
         score = total / len(levels)
 
         return score
