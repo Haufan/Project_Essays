@@ -24,9 +24,13 @@
 #    - checks whether AUF is filled with EIN, HAU, or SCH whenever a
 #      segment has both a number and a non-empty text field
 #    - checks whether only the allowed zone labels
-#      AHG, WHG, SON, GLD, TH1, TH2, and ZTH
+#      AHG, WHG, SON, GLD, TH1, TH2, ZTH, PRO, and CON
 #      are used in the column FKT
 #    - checks whether KON = ABW or UEN has at least one TH1 and one TH2 in FKT
+#    - checks whether ADD = J does not allow a text consisting only of uppercase letters
+#    - checks whether KON = EIN does not contain TH1 or TH2 in FKT
+#    - checks whether a non-empty Text requires ADD = J or N
+#    - checks whether KON = EIN, ABW, or UEN has at least one ZTH in FKT
 #
 #    Output:
 #    - .txt file with all detected errors
@@ -229,6 +233,16 @@ def check_same_names_in_three_folders(parent_folder, raw_folder, segmented_folde
             )
 
 
+def is_text_only_uppercase(text):
+    """
+    Returns True if the text contains at least one alphabetic character
+    and all alphabetic characters are uppercase.
+    Non-letter characters are ignored.
+    """
+    letters = [ch for ch in text if ch.isalpha()]
+    return bool(letters) and all(ch.isupper() for ch in letters)
+
+
 def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
     try:
         txt_lines = safe_read_text_lines(segmented_txt_path)
@@ -284,6 +298,7 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
     expected_number = 0
     found_th1 = False
     found_th2 = False
+    found_zth = False
 
     for row_index, row in enumerate(segment_rows, start=3):
         if len(row) < len(csv_data["header"]):
@@ -302,6 +317,8 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
             found_th1 = True
         if fkt_value == "TH2":
             found_th2 = True
+        if fkt_value == "ZTH":
+            found_zth = True
 
         if number_value == "":
             add_error(errors, csv_path, f"CSV row {row_index}: segment number (Nr.) is missing")
@@ -332,6 +349,15 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                 f"CSV row {row_index}: segment number exists, but text field is empty"
             )
 
+        # Neue Regel 3:
+        # Wenn Text vorhanden ist, muss ADD = J oder N sein
+        if has_text and add_value not in ALLOWED_ADD_VALUES:
+            add_error(
+                errors,
+                csv_path,
+                f"CSV row {row_index}: ADD must be 'J' or 'N' when text exists"
+            )
+
         if has_number and has_text:
             if add_value not in ALLOWED_ADD_VALUES:
                 add_error(
@@ -360,6 +386,15 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                     f"CSV row {row_index}: invalid FKT value '{fkt_value}', allowed values are: {', '.join(sorted(ALLOWED_FKT_VALUES))}"
                 )
 
+        # Neue Regel 1:
+        # Wenn ADD = J, darf Text nicht nur aus Großbuchstaben bestehen
+        if add_value == "J" and has_text and is_text_only_uppercase(text_value):
+            add_error(
+                errors,
+                csv_path,
+                f"CSV row {row_index}: text must not consist only of uppercase letters when ADD = 'J'"
+            )
+
     if konstellation in {"ABW", "UEN"}:
         missing_parts = []
         if not found_th1:
@@ -373,6 +408,31 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                 csv_path,
                 f"KON is '{konstellation}', therefore FKT must contain at least one TH1 and one TH2; missing: {', '.join(missing_parts)}"
             )
+
+    # Neue Regel 2:
+    # Wenn KON = EIN, dann darf es kein TH1 oder TH2 geben
+    if konstellation == "EIN":
+        forbidden_parts = []
+        if found_th1:
+            forbidden_parts.append("TH1")
+        if found_th2:
+            forbidden_parts.append("TH2")
+
+        if forbidden_parts:
+            add_error(
+                errors,
+                csv_path,
+                f"KON is 'EIN', therefore FKT must not contain: {', '.join(forbidden_parts)}"
+            )
+
+    # Neue Regel 4:
+    # Wenn KON = EIN, ABW oder UEN, dann muss mindestens ein ZTH existieren
+    if konstellation in {"EIN", "ABW", "UEN"} and not found_zth:
+        add_error(
+            errors,
+            csv_path,
+            f"KON is '{konstellation}', therefore FKT must contain at least one ZTH"
+        )
 
 
 def process_parent_folder(parent_folder, errors):
