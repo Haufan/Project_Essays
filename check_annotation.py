@@ -1,5 +1,5 @@
 # ==========================================
-# File: check_data.py
+# File: check_annotation.py
 # Author: Dietmar Benndorf
 # Date: 2026-04-15
 # Description:

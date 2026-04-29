@@ -77,10 +77,14 @@ class Text:
                 "unique_connectors_used": 0,
                 "pct_connectors_used_once": 0.0,
                 "pct_connectors_used_more_than_3": 0.0,
-            }
+
+                "connector_frequencies": {},
+                "connector_level_frequencies": {},
+                "connector_function_frequencies": {},
+                }
             self.connector_score_level = 0.0
 
-            return  # <-- WICHTIG: keine weitere Berechnung
+            return
 
 
         self.id = id
@@ -243,7 +247,7 @@ class Text:
         }
 
 
-    def get_connector_stats(self) -> list:
+    '''def get_connector_stats(self) -> list:
         """
         Extract connectors from lemma/POS tuples, compute a CEFR-based connector score,
         and compute connector frequency statistics.
@@ -297,6 +301,97 @@ class Text:
             "unique_connectors_used": unique_used,
             "pct_connectors_used_once": pct_once / 100,
             "pct_connectors_used_more_than_3": pct_more_than_3 / 100,
+        }
+
+        return [connectors, connector_type, connector_score, stats]'''
+
+    def get_connector_stats(self) -> list:
+        """
+        Extract connectors from lemma/POS tuples, compute a CEFR-based connector score,
+        and compute connector frequency statistics.
+
+        Returns
+        -------
+        list
+            [connectors, connector_type, connector_score, stats]
+
+            stats contains:
+            - unique_connectors_used
+            - pct_connectors_used_once
+            - pct_connectors_used_more_than_3
+            - connector_frequencies
+            - connector_level_frequencies
+            - connector_function_frequencies
+            - connector_type_frequencies
+        """
+
+        connectors = []
+        connector_type = [[], [], []]
+        connector_score = []
+
+        KONJUNKTIONEN = list(self.all_connectors[0])
+        SUBJUNKTIONEN = list(self.all_connectors[1])
+        KONJUNKTIONALADVERBIEN = list(self.all_connectors[2])
+
+        CONNECTOR_LEVEL = (
+                (self.all_connectors[0] | self.all_connectors[1])
+                | self.all_connectors[2]
+        )
+
+        for token in self.lemma_pos:
+            if token[0] in KONJUNKTIONEN and token[1] == "CCONJ":
+                connectors.append(token[0])
+                connector_type[0].append(token[0])
+                connector_score.append(CONNECTOR_LEVEL[token[0]])
+
+            elif token[0] in SUBJUNKTIONEN and token[1] == "SCONJ":
+                connectors.append(token[0])
+                connector_type[1].append(token[0])
+                connector_score.append(CONNECTOR_LEVEL[token[0]])
+
+            elif token[0] in KONJUNKTIONALADVERBIEN and token[1] == "ADV":
+                connectors.append(token[0])
+                connector_type[2].append(token[0])
+                connector_score.append(CONNECTOR_LEVEL[token[0]])
+
+        freq = Counter(connectors)
+        unique_used = len(freq)
+
+        if unique_used == 0:
+            pct_once = 0.0
+            pct_more_than_3 = 0.0
+        else:
+            once = sum(1 for c in freq.values() if c == 1)
+            more_than_3 = sum(1 for c in freq.values() if c > 3)
+
+            pct_once = round((once / unique_used) * 100, 2)
+            pct_more_than_3 = round((more_than_3 / unique_used) * 100, 2)
+
+        connector_level_frequencies = Counter()
+        connector_function_frequencies = Counter()
+
+        for level, function in connector_score:
+            connector_level_frequencies[level] += 1
+            connector_function_frequencies[function] += 1
+
+        connector_type_frequencies = {
+            "konjunktionen": len(connector_type[0]),
+            "subjunktionen": len(connector_type[1]),
+            "konjunktionaladverbien": len(connector_type[2]),
+        }
+
+        connector_score = self.get_score_levels(connector_score)
+
+        stats = {
+            "unique_connectors_used": unique_used,
+            "pct_connectors_used_once": pct_once / 100,
+            "pct_connectors_used_more_than_3": pct_more_than_3 / 100,
+
+            "connector_frequencies": dict(freq),
+
+            "connector_level_frequencies": dict(connector_level_frequencies),
+
+            "connector_function_frequencies": dict(connector_function_frequencies),
         }
 
         return [connectors, connector_type, connector_score, stats]
