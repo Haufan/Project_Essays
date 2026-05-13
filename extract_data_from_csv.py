@@ -281,7 +281,7 @@ def process_all_csv_files(input_root, output_file):
 
 
 def main():
-    input_root = r"C:\Users\haufa\Downloads\Annotationen\Annotationen"
+    input_root = r"C:\Users\haufa\Downloads\Annotationen\Annotationen\alle_texte"
     output_file = r"C:\Users\haufa\Downloads\csv_segment_summary.csv"
 
     results = process_all_csv_files(input_root, output_file)

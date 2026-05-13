@@ -22,8 +22,8 @@ from pathlib import Path
 
 
 EXCEL_PATH = r"C:\Users\haufa\Downloads\Original Data.xlsx"
-#SUMMARY_CSV_PATH = r"C:\Users\haufa\Downloads\csv_segment_summary.csv"
 SUMMARY_CSV_PATH = r"C:\Users\haufa\Downloads\csv_segment_summary.csv"
+#SUMMARY_CSV_PATH = r"C:\Users\haufa\Downloads\analysis_results.csv"
 OUTPUT_CSV_PATH = r"C:\Users\haufa\Downloads\original_data_extended.csv"
 
 
@@ -334,7 +334,7 @@ def merge_original_with_summary(excel_path, summary_csv_path, output_csv_path):
         writer = csv.DictWriter(
             f,
             fieldnames=output_header,
-            delimiter="|",
+            delimiter=",",
             extrasaction="ignore"
         )
         writer.writeheader()

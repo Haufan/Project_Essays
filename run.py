@@ -77,24 +77,27 @@ def main(source):
 
             # KONNEKTORSTATISTIK
             "connector_count": obj.connector_count,
-            "unique_connectors_used": obj.connector_stats.get("unique_connectors_used"),
+            "unique_connectors_used": safe_divide(
+                obj.connector_stats.get("unique_connectors_used"),
+                obj.connector_count
+            ),
 
-            "connector_type_KON": obj.connector_count_type[0],
-            "connector_type_SUB": obj.connector_count_type[1],
-            "connector_type_ADV": obj.connector_count_type[2],
+            "connector_type_KON": safe_divide(
+                obj.connector_count_type[0],
+                obj.connector_count
+            ),
+            "connector_type_SUB": safe_divide(
+                obj.connector_count_type[1],
+                obj.connector_count
+            ),
+            "connector_type_ADV": safe_divide(
+                obj.connector_count_type[2],
+                obj.connector_count
+            ),
 
-            "unique_connector_type_KON": safe_divide(
-                obj.dif_connector_count_type[0],
-                obj.connector_count
-            ),
-            "unique_connector_type_SUB": safe_divide(
-                obj.dif_connector_count_type[1],
-                obj.connector_count
-            ),
-            "unique_connector_type_ADV": safe_divide(
-                obj.dif_connector_count_type[2],
-                obj.connector_count
-            ),
+            "unique_connector_type_KON": obj.dif_connector_count_type[0],
+            "unique_connector_type_SUB": obj.dif_connector_count_type[1],
+            "unique_connector_type_ADV": obj.dif_connector_count_type[2],
 
             "connectors_per_100_words": obj.connector_per_hundred,
 
@@ -252,5 +255,5 @@ def main(source):
 
 
 if __name__ == "__main__":
-    source = "C:/Users/haufa/PycharmProjects/Project_Essays/test_data/texts test"
+    source = "C:/Users/haufa/PycharmProjects/Project_Essays/test_data/texts all"
     main(source)
