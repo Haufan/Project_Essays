@@ -38,6 +38,7 @@
 # ==========================================
 
 import csv
+import re
 from pathlib import Path
 
 
@@ -46,6 +47,8 @@ ALLOWED_AUF_VALUES = {"EIN", "HAU", "SCH"}
 ALLOWED_FKT_VALUES = {"AHG", "WHG", "SON", "GLD", "TH1", "TH2", "ZTH", "PRO", "CON"}
 ALLOWED_THE_VALUES = {"BOOK", "FAST", "ARTS", "VOLU"}
 ALLOWED_KON_VALUES = {"EIN", "ABW", "UEN", "UKL"}
+ALLOWED_REL_VALUES = {"SUP", "ATT", "RES", "ELA", "NO"}
+
 
 
 def add_error(errors, path, message):
@@ -140,6 +143,8 @@ def parse_annotated_csv(csv_path, errors):
     idx_fkt = find_column_index(header, "FKT")
     idx_the = find_column_index(header, "THE")
     idx_kon = find_column_index(header, "KON")
+    idx_rel = find_column_index(header, "REL")
+    idx_zie = find_column_index(header, "ZIE")
 
     required_columns = {
         "Nr.": idx_n,
@@ -149,6 +154,8 @@ def parse_annotated_csv(csv_path, errors):
         "FKT": idx_fkt,
         "THE": idx_the,
         "KON": idx_kon,
+        "REL": idx_rel,
+        "ZIE": idx_zie,
     }
 
     missing_columns = [name for name, idx in required_columns.items() if idx is None]
@@ -183,6 +190,8 @@ def parse_annotated_csv(csv_path, errors):
         "idx_fkt": idx_fkt,
         "idx_the": idx_the,
         "idx_kon": idx_kon,
+        "idx_rel": idx_rel,
+        "idx_zie": idx_zie,
     }
 
 
@@ -243,6 +252,49 @@ def is_text_only_uppercase(text):
     return bool(letters) and all(ch.isupper() for ch in letters)
 
 
+def parse_zie_targets(zie_value):
+    """
+    Validates and parses the ZIE column.
+
+    Allowed ZIE formats:
+    - one target: 3
+    - multiple targets: 3;4;5
+    - one connection: 3-4
+    - combination with target: [1] 3
+    - combination with multiple values and multiple targets: [1;2] 3;4
+
+    Returns:
+    - (True, target_numbers) if the format is valid
+    - (False, []) if the format is invalid
+
+    For combination syntax, only the numbers after the closing bracket are
+    treated as targets. The numbers inside [...] describe the combination.
+    """
+    value = zie_value.strip()
+
+    if value == "":
+        return True, []
+
+    number_list_pattern = r"\d+(?:;\d+)*"
+
+    # Simple target list, e.g. 3 or 3;4 or 3;4;5
+    if re.fullmatch(number_list_pattern, value):
+        return True, [int(part) for part in value.split(";")]
+
+    # Connection, e.g. 3-4
+    match = re.fullmatch(r"(\d+)-(\d+)", value)
+    if match:
+        return True, [int(match.group(1)), int(match.group(2))]
+
+    # Combination with target, e.g. [1] 3 or [1;2] 3;4
+    match = re.fullmatch(r"\[(\d+(?:;\d+)*)\]\s+(\d+(?:;\d+)*)", value)
+    if match:
+        target_part = match.group(2)
+        return True, [int(part) for part in target_part.split(";")]
+
+    return False, []
+
+
 def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
     try:
         txt_lines = safe_read_text_lines(segmented_txt_path)
@@ -263,6 +315,8 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
     idx_fkt = csv_data["idx_fkt"]
     idx_the = csv_data["idx_the"]
     idx_kon = csv_data["idx_kon"]
+    idx_rel = csv_data["idx_rel"]
+    idx_zie = csv_data["idx_zie"]
 
     if len(segment_rows) == 0:
         add_error(errors, csv_path, "CSV does not contain any segments")
@@ -299,6 +353,7 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
     found_th1 = False
     found_th2 = False
     found_zth = False
+    zth_without_rel_and_zie_count = 0
 
     for row_index, row in enumerate(segment_rows, start=3):
         if len(row) < len(csv_data["header"]):
@@ -309,9 +364,33 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
         add_value = row[idx_add].strip()
         auf_value = row[idx_auf].strip()
         fkt_value = row[idx_fkt].strip()
+        rel_value = row[idx_rel].strip()
+        zie_value = row[idx_zie].strip()
 
         has_number = number_value != "" and number_value != "X"
         has_text = text_value != ""
+
+        # ZIE-Format pruefen und Zielnummern extrahieren.
+        zie_format_is_valid, zie_target_numbers = parse_zie_targets(zie_value)
+        if not zie_format_is_valid:
+            add_error(
+                errors,
+                csv_path,
+                f"CSV row {row_index}: invalid ZIE format '{zie_value}'. Allowed examples: 3, 3;4, 3-4, [1] 3, [1;2] 3;4"
+            )
+
+        # Das Ziel darf nie mit der eigenen Nr. identisch sein.
+        try:
+            current_number_int = int(number_value)
+        except ValueError:
+            current_number_int = None
+
+        if current_number_int is not None and current_number_int in zie_target_numbers:
+            add_error(
+                errors,
+                csv_path,
+                f"CSV row {row_index}: ZIE must not contain the same number as Nr. ({current_number_int})"
+            )
 
         if fkt_value == "TH1":
             found_th1 = True
@@ -341,6 +420,83 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                         csv_path,
                         f"CSV row {row_index}: segment number is not an integer: '{number_value}'"
                     )
+
+
+        # Neue REL/ZIE-Regeln:
+        # 1) In REL sind nur SUP, ATT, RES, ELA, NO oder leer erlaubt.
+        if rel_value != "" and rel_value not in ALLOWED_REL_VALUES:
+            add_error(
+                errors,
+                csv_path,
+                f"CSV row {row_index}: invalid REL value '{rel_value}', allowed values are: {', '.join(sorted(ALLOWED_REL_VALUES))} or empty"
+            )
+
+        # 2) Es darf höchstens eine ZTH geben, bei der REL und ZIE leer sind.
+        if fkt_value == "ZTH" and rel_value == "" and zie_value == "":
+            zth_without_rel_and_zie_count += 1
+
+        # 3) TH1, TH2, PRO und CON müssen Werte in REL und ZIE haben.
+        if fkt_value in {"TH1", "TH2", "PRO", "CON"}:
+            if rel_value == "":
+                add_error(
+                    errors,
+                    csv_path,
+                    f"CSV row {row_index}: REL must not be empty when FKT = '{fkt_value}'"
+                )
+            if zie_value == "":
+                add_error(
+                    errors,
+                    csv_path,
+                    f"CSV row {row_index}: ZIE must not be empty when FKT = '{fkt_value}'"
+                )
+
+        # 4) WHG, AHG, GLD und SON müssen REL = NO haben; ZIE muss leer sein.
+        if fkt_value in {"WHG", "AHG", "GLD", "SON"}:
+            if rel_value != "NO":
+                add_error(
+                    errors,
+                    csv_path,
+                    f"CSV row {row_index}: REL must be 'NO' when FKT = '{fkt_value}'"
+                )
+            if zie_value != "":
+                add_error(
+                    errors,
+                    csv_path,
+                    f"CSV row {row_index}: ZIE must be empty when FKT = '{fkt_value}'"
+                )
+
+        # 5) Bei KON = ABW oder UKL:
+        #    TH1 darf in REL nur SUP, ELA oder RES haben.
+        #    TH2 darf in REL nur ATT, ELA oder RES haben.
+        if konstellation in {"ABW", "UKL"}:
+            if fkt_value == "TH1" and rel_value not in {"SUP", "ELA", "RES"}:
+                add_error(
+                    errors,
+                    csv_path,
+                    f"CSV row {row_index}: REL must be 'SUP', 'ELA', or 'RES' when KON = '{konstellation}' and FKT = 'TH1'"
+                )
+            if fkt_value == "TH2" and rel_value not in {"ATT", "ELA", "RES"}:
+                add_error(
+                    errors,
+                    csv_path,
+                    f"CSV row {row_index}: REL must be 'ATT', 'ELA', or 'RES' when KON = '{konstellation}' and FKT = 'TH2'"
+                )
+
+        # 6) Bei KON = UEN müssen TH1 und TH2 in REL SUP, ELA oder RES haben.
+        if konstellation == "UEN" and fkt_value in {"TH1", "TH2"} and rel_value not in {"SUP", "ELA", "RES"}:
+            add_error(
+                errors,
+                csv_path,
+                f"CSV row {row_index}: REL must be 'SUP', 'ELA', or 'RES' when KON = 'UEN' and FKT = '{fkt_value}'"
+            )
+
+        # 7) ZTH darf in REL nur ELA, RES oder leer haben.
+        if fkt_value == "ZTH" and rel_value not in {"ELA", "RES", ""}:
+            add_error(
+                errors,
+                csv_path,
+                f"CSV row {row_index}: REL must be 'ELA', 'RES', or empty when FKT = 'ZTH'"
+            )
 
         if has_number and not has_text:
             add_error(
@@ -394,6 +550,13 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                 csv_path,
                 f"CSV row {row_index}: text must not consist only of uppercase letters when ADD = 'J'"
             )
+
+    if zth_without_rel_and_zie_count > 1:
+        add_error(
+            errors,
+            csv_path,
+            f"Only one ZTH may have empty REL and empty ZIE; found {zth_without_rel_and_zie_count}"
+        )
 
     if konstellation in {"ABW", "UEN"}:
         missing_parts = []
@@ -476,12 +639,31 @@ def process_parent_folder(parent_folder, errors):
 
 
 def write_errors(errors, output_file):
+    """
+    Writes the collected errors to a TXT file.
+
+    If output_file is accidentally given as a folder path, the function
+    automatically writes to check_data_errors.txt inside that folder.
+    This prevents PermissionError when trying to open a directory as a file.
+    """
     output_path = Path(output_file)
+
+    # If the given output path is an existing folder, create the error file inside it.
+    if output_path.exists() and output_path.is_dir():
+        output_path = output_path / "check_data_errors.txt"
+
+    # If the path has no file extension, treat it as a folder path as well.
+    elif output_path.suffix == "":
+        output_path.mkdir(parents=True, exist_ok=True)
+        output_path = output_path / "check_data_errors.txt"
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_path, "w", encoding="utf-8") as f:
         for error in errors:
             f.write(error + "\n")
+
+    return output_path
 
 
 def find_data_groups(root_path):
@@ -518,7 +700,7 @@ def run_checks(input_root, output_error_file):
 
 
 def main():
-    input_root = r"C:\Users\haufa\Downloads\Annotationen\Annotationen"
+    input_root = r"C:\Users\haufa\Downloads\B 901-910+"
     output_error_file = r"C:\Users\haufa\Downloads\check_data_errors.txt"
 
     errors = run_checks(input_root, output_error_file)
