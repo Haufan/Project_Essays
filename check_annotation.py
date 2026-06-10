@@ -31,6 +31,8 @@
 #    - checks whether KON = EIN does not contain TH1 or TH2 in FKT
 #    - checks whether a non-empty Text requires ADD = J or N
 #    - checks whether KON = EIN, ABW, or UEN has at least one ZTH in FKT
+#    - checks whether REL = RES or ELA points to a target with the same FKT
+#    - checks whether in KON = ABW or UEN only TH1 and TH2 point to ZTH
 #
 #    Output:
 #    - .txt file with all detected errors
@@ -296,11 +298,20 @@ def parse_zie_targets(zie_value):
 
 
 def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
-    try:
-        txt_lines = safe_read_text_lines(segmented_txt_path)
-    except Exception as e:
-        add_error(errors, segmented_txt_path, f"Could not read segmented TXT: {e}")
-        return
+    """
+    Checks one annotated CSV file.
+
+    If segmented_txt_path is None or cannot be read, all CSV-only checks
+    are still performed. Only the TXT-vs-CSV segment-count comparison is
+    skipped in that case.
+    """
+    txt_lines = None
+
+    if segmented_txt_path is not None:
+        try:
+            txt_lines = safe_read_text_lines(segmented_txt_path)
+        except Exception as e:
+            add_error(errors, segmented_txt_path, f"Could not read segmented TXT: {e}")
 
     csv_data = parse_annotated_csv(csv_path, errors)
     if csv_data is None:
@@ -342,7 +353,7 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
             f"Invalid KON value '{konstellation}', allowed values are: {', '.join(sorted(ALLOWED_KON_VALUES))}"
         )
 
-    if len(txt_lines) != len(segment_rows):
+    if txt_lines is not None and len(txt_lines) != len(segment_rows):
         add_error(
             errors,
             csv_path,
@@ -354,6 +365,10 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
     found_th2 = False
     found_zth = False
     zth_without_rel_and_zie_count = 0
+
+    # Stores parsed row data for cross-reference checks that need to compare
+    # a segment with the FKT value of its ZIE target(s).
+    segment_records = []
 
     for row_index, row in enumerate(segment_rows, start=3):
         if len(row) < len(csv_data["header"]):
@@ -391,6 +406,16 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                 csv_path,
                 f"CSV row {row_index}: ZIE must not contain the same number as Nr. ({current_number_int})"
             )
+
+        segment_records.append({
+            "row_index": row_index,
+            "nr": current_number_int,
+            "fkt": fkt_value,
+            "rel": rel_value,
+            "zie": zie_value,
+            "zie_format_is_valid": zie_format_is_valid,
+            "zie_target_numbers": zie_target_numbers,
+        })
 
         if fkt_value == "TH1":
             found_th1 = True
@@ -551,6 +576,72 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                 f"CSV row {row_index}: text must not consist only of uppercase letters when ADD = 'J'"
             )
 
+    # Cross-reference checks for ZIE targets.
+    # Build a lookup table from segment number (Nr.) to FKT.
+    number_to_fkt = {}
+    number_to_row_index = {}
+    duplicate_numbers = set()
+
+    for record in segment_records:
+        nr = record["nr"]
+        if nr is None:
+            continue
+        if nr in number_to_fkt:
+            duplicate_numbers.add(nr)
+        else:
+            number_to_fkt[nr] = record["fkt"]
+            number_to_row_index[nr] = record["row_index"]
+
+    for record in segment_records:
+        row_index = record["row_index"]
+        source_fkt = record["fkt"]
+        rel_value = record["rel"]
+        zie_value = record["zie"]
+
+        if not record["zie_format_is_valid"] or zie_value == "":
+            continue
+
+        for target_number in record["zie_target_numbers"]:
+            target_fkt = number_to_fkt.get(target_number)
+            target_row_index = number_to_row_index.get(target_number)
+
+            if target_fkt is None:
+                add_error(
+                    errors,
+                    csv_path,
+                    f"CSV row {row_index}: ZIE target {target_number} does not exist as Nr. in this CSV"
+                )
+                continue
+
+            # New rule 1:
+            # REL = RES or ELA must point to a target with the same FKT.
+            # Example: FKT = PRO with REL = RES/ELA may only point to FKT = PRO.
+            if rel_value in {"RES", "ELA"} and source_fkt != target_fkt:
+                add_error(
+                    errors,
+                    csv_path,
+                    f"CSV row {row_index}: REL = '{rel_value}' requires target {target_number} "
+                    f"(CSV row {target_row_index}) to have the same FKT as the source; "
+                    f"source FKT = '{source_fkt}', target FKT = '{target_fkt}'"
+                )
+
+            # New rule 2:
+            # In ABW and UEN texts, only TH1 and TH2 may point to ZTH.
+            if konstellation in {"ABW", "UEN"} and target_fkt == "ZTH" and source_fkt not in {"TH1", "TH2", "ZTH"}:
+                add_error(
+                    errors,
+                    csv_path,
+                    f"CSV row {row_index}: in KON = '{konstellation}', only TH1 and TH2 may point to ZTH; "
+                    f"source FKT = '{source_fkt}', target {target_number} has FKT = 'ZTH'"
+                )
+
+    if duplicate_numbers:
+        add_error(
+            errors,
+            csv_path,
+            f"Duplicate segment numbers found; ZIE target checks may be ambiguous for Nr.: {', '.join(str(n) for n in sorted(duplicate_numbers))}"
+        )
+
     if zth_without_rel_and_zie_count > 1:
         add_error(
             errors,
@@ -601,7 +692,10 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
 def process_parent_folder(parent_folder, errors):
     raw_folder, segmented_folder, annotated_folder = check_required_subfolders(parent_folder, errors)
 
-    if not raw_folder.is_dir() or not segmented_folder.is_dir() or not annotated_folder.is_dir():
+    # Without an annotated folder there are no CSV files to validate.
+    # Missing raw or segmented folders are reported, but CSV-only checks
+    # should still run whenever annotated CSV files are available.
+    if not annotated_folder.is_dir():
         return
 
     check_same_names_in_three_folders(parent_folder, raw_folder, segmented_folder, annotated_folder, errors)
@@ -609,21 +703,12 @@ def process_parent_folder(parent_folder, errors):
     segmented_map = get_stem_map(segmented_folder)
     annotated_map = get_stem_map(annotated_folder)
 
-    common_names = set(segmented_map.keys()) & set(annotated_map.keys())
-
-    for name in sorted(common_names):
-        segmented_files = segmented_map[name]
+    # Iterate over annotated files, not only over names that also exist in
+    # segmented. This ensures CSV checks are still performed when raw or
+    # segmented files/folders are missing.
+    for name in sorted(annotated_map.keys()):
         annotated_files = annotated_map[name]
-
-        segmented_txt = None
-        for file_path in segmented_files:
-            if file_path.suffix.lower() == ".txt":
-                segmented_txt = file_path
-                break
-
-        if segmented_txt is None:
-            add_error(errors, parent_folder, f"Missing .txt file for '{name}' in folder segmented")
-            continue
+        segmented_files = segmented_map.get(name, [])
 
         csv_file = None
         for file_path in annotated_files:
@@ -634,6 +719,15 @@ def process_parent_folder(parent_folder, errors):
         if csv_file is None:
             add_error(errors, parent_folder, f"Missing .csv file for '{name}' in folder annotated")
             continue
+
+        segmented_txt = None
+        for file_path in segmented_files:
+            if file_path.suffix.lower() == ".txt":
+                segmented_txt = file_path
+                break
+
+        if segmented_txt is None:
+            add_error(errors, parent_folder, f"Missing .txt file for '{name}' in folder segmented; skipping TXT-vs-CSV segment-count check")
 
         check_segmented_vs_csv(segmented_txt, csv_file, errors)
 
@@ -700,7 +794,7 @@ def run_checks(input_root, output_error_file):
 
 
 def main():
-    input_root = r"C:\Users\haufa\Downloads\B 901-910+"
+    input_root = r"C:\Users\haufa\Downloads\B 911-1010+\gold"
     output_error_file = r"C:\Users\haufa\Downloads\check_data_errors.txt"
 
     errors = run_checks(input_root, output_error_file)

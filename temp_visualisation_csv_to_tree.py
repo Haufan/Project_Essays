@@ -1,4 +1,24 @@
-# -*- coding: utf-8 -*-
+# ==========================================
+# File: temp_visualisation_csv_to_tree.py
+# Author: Dietmar Benndorf
+# Date: 2026-06-10
+# Description:
+#    Reads annotated CSV files from one input folder and creates graphical
+#    tree structures of the argumentative relations between the segments.
+#
+#    The program uses the columns Nr, Text, FKT, REL, and ZIE to build a
+#    directed graph. Argumentative segments are shown as nodes, and relations
+#    such as support, attack, restatement, and elaboration are shown as edges.
+#
+#    Special ZIE formats such as multiple targets, joint support, and
+#    connection targets are supported. The generated graph images are saved
+#    as PNG files in an Output folder.
+#
+#    The option SHOW_TEXT controls whether the segment text is displayed
+#    inside the graph nodes:
+#    - 0 = show only segment number and FKT
+#    - 1 = show segment number, FKT, and segment text
+# ==========================================
 
 from pathlib import Path
 import csv
@@ -157,11 +177,22 @@ def load_csv(csv_path: Path) -> pd.DataFrame:
     return df
 
 
-def make_node_label(row: pd.Series, max_width: int = 34) -> str:
+def make_node_label(row: pd.Series, max_width: int = 34, show_text: bool = True) -> str:
+    """
+    Erstellt die Beschriftung eines Segmentknotens.
+
+    show_text = True:
+        Nr., FKT und Segmenttext werden angezeigt.
+    show_text = False:
+        Nur Nr. und FKT werden angezeigt.
+    """
     nr = row["Nr"]
     fkt = row["FKT"]
-    text = row["Text"]
 
+    if not show_text:
+        return f"{nr} · {fkt}"
+
+    text = row["Text"]
     wrapped_text = "\n".join(textwrap.wrap(text, width=max_width))
     return f"{nr} · {fkt}\n{wrapped_text}"
 
@@ -378,7 +409,7 @@ def create_connection_node(
     return connection_id
 
 
-def build_graph(df: pd.DataFrame, only_argumentative: bool = True) -> nx.DiGraph:
+def build_graph(df: pd.DataFrame, only_argumentative: bool = True, show_text: bool = True) -> nx.DiGraph:
     graph = nx.DiGraph()
     warnings = []
     connection_relations = []
@@ -396,7 +427,7 @@ def build_graph(df: pd.DataFrame, only_argumentative: bool = True) -> nx.DiGraph
 
         graph.add_node(
             nr,
-            label=make_node_label(row),
+            label=make_node_label(row, show_text=show_text),
             fkt=fkt,
             text=row["Text"]
         )
@@ -790,11 +821,11 @@ def draw_graph(graph: nx.DiGraph, output_path: Path, title: str):
     plt.close()
 
 
-def process_csv_file(csv_path: Path, output_folder: Path):
+def process_csv_file(csv_path: Path, output_folder: Path, show_text: bool = True):
     print(f"\nVerarbeite: {csv_path.name}")
 
     df = load_csv(csv_path)
-    graph = build_graph(df, only_argumentative=True)
+    graph = build_graph(df, only_argumentative=True, show_text=show_text)
 
     output_path = output_folder / f"{csv_path.stem}_baumstruktur.png"
 
@@ -807,7 +838,7 @@ def process_csv_file(csv_path: Path, output_folder: Path):
     print(f"Gespeichert: {output_path}")
 
 
-def process_folder(folder_path: str):
+def process_folder(folder_path: str, show_text: bool = True):
     input_folder = Path(folder_path)
 
     if not input_folder.exists():
@@ -830,7 +861,7 @@ def process_folder(folder_path: str):
 
     for csv_path in csv_files:
         try:
-            process_csv_file(csv_path, output_folder)
+            process_csv_file(csv_path, output_folder, show_text=show_text)
             successful += 1
         except Exception as error:
             failed += 1
@@ -843,6 +874,12 @@ def process_folder(folder_path: str):
 
 
 if __name__ == "__main__":
+    # Option:
+    # 0 = Segmenttext wird nicht in den Knoten angezeigt
+    # 1 = Segmenttext wird in den Knoten angezeigt
+    SHOW_TEXT = 0
+
     #INPUT_FOLDER = r"C:\Users\haufa\Downloads\Training_Eric\annotated"
-    INPUT_FOLDER = r"C:\Users\haufa\Downloads\Training_Eric\IAA C101-116 Eric"
-    process_folder(INPUT_FOLDER)
+    INPUT_FOLDER = r"C:\Users\haufa\Downloads\B 911-1010+\gold\annotator 2"
+
+    process_folder(INPUT_FOLDER, show_text=bool(SHOW_TEXT))
