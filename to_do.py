@@ -1,6 +1,9 @@
 # ToDos
 # ----------
 #
+#  raw zu Text testen!!!
+#
+#
 # 1.) Datenauswertung nach Versuch + alle
 # 2.) Art der Konnektoren hinzufügen - Programm anpassen
 # 3.) Wiederholung

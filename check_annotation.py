@@ -33,6 +33,17 @@
 #    - checks whether KON = EIN, ABW, or UEN has at least one ZTH in FKT
 #    - checks whether REL = RES or ELA points to a target with the same FKT
 #    - checks whether in KON = ABW or UEN only TH1 and TH2 point to ZTH
+#    - reports an unusual direct connection when PRO or CON points to ZTH
+#      in KON = ABW or UEN
+#    - compares raw and segmented TXT content after removing whitespace and
+#      permitted inserted thesis statements from the segmented text
+#    - checks whether annotated CSV files use | as the field delimiter
+#    - compares each segmented line with the corresponding annotated Text
+#      after removing whitespace and converting both texts to lowercase
+#    - checks whether inserted uppercase theses appear in their configured
+#      normal spelling in annotated and have ADD = J
+#    - checks the reverse direction: every annotated segment with ADD = J
+#      must correspond to a recognized inserted uppercase thesis in segmented
 #
 #    Output:
 #    - .txt file with all detected errors
@@ -51,6 +62,31 @@ ALLOWED_THE_VALUES = {"BOOK", "FAST", "ARTS", "VOLU"}
 ALLOWED_KON_VALUES = {"EIN", "ABW", "UEN", "UKL"}
 ALLOWED_REL_VALUES = {"SUP", "ATT", "RES", "ELA", "NO"}
 
+EXPECTED_CSV_COLUMNS = ("Nr.", "Text", "ADD", "AUF", "FKT", "REL", "ZIE", "THE", "KON")
+
+INSERTED_THESIS_NORMAL_FORMS_BASE = {
+    "E-BOOKS SOLLTEN BÜCHER ERSETZEN.": "E-Books sollten Bücher ersetzen.",
+    "BÜCHER SOLLTEN NICHT ERSETZT WERDEN.": "Bücher sollten nicht ersetzt werden.",
+    "SELBERKOCHEN IST BESSER ALS FAST FOOD.": "Selberkochen ist besser als Fast Food.",
+    "FAST FOOD IST BESSER ALS SELBERKOCHEN.": "Fast Food ist besser als Selberkochen.",
+    "DARSTELLENDES SPIEL SOLLTE VERPFLICHTEND EINGEFÜHRT WERDEN.":
+        "Darstellendes Spiel sollte verpflichtend eingeführt werden.",
+    "DARSTELLENDES SPIEL SOLLTE NICHT VERPFLICHTEND EINGEFÜHRT WERDEN.":
+        "Darstellendes Spiel sollte nicht verpflichtend eingeführt werden.",
+    "MAN SOLLTE EIN EHRENAMT AUSFÜHREN.": "Man sollte ein Ehrenamt ausführen.",
+    "MAN SOLLTE KEIN EHRENAMT AUSFÜHREN.": "Man sollte kein Ehrenamt ausführen.",
+}
+
+INSERTED_THESIS_NORMAL_FORMS = {
+    uppercase_variant: normal_variant
+    for uppercase_thesis, normal_thesis in INSERTED_THESIS_NORMAL_FORMS_BASE.items()
+    for uppercase_variant, normal_variant in (
+        (uppercase_thesis, normal_thesis),
+        (uppercase_thesis + ".", normal_thesis + "."),
+    )
+}
+
+SEGMENTED_INSERTED_ELEMENTS = set(INSERTED_THESIS_NORMAL_FORMS)
 
 
 def add_error(errors, path, message):
@@ -75,12 +111,119 @@ def safe_read_text_lines(file_path):
     raise last_error
 
 
+def remove_all_whitespace(text):
+    """Removes spaces, tabs, line breaks, and all other whitespace."""
+    return re.sub(r"\s+", "", text)
+
+
+def normalize_raw_text(lines):
+    """Normalizes raw TXT content for comparison."""
+    return remove_all_whitespace("".join(lines))
+
+
+def remove_permitted_inserted_elements(segmented_text):
+    """
+    Removes every exactly matching permitted thesis from segmented text.
+
+    Processing is deliberately strict:
+    - matching is case-sensitive
+    - the wording, spaces, umlauts, and punctuation must be identical to one
+      of the explicitly configured variants
+    - no case conversion, whitespace normalization, or fuzzy matching is
+      performed before the search
+    - every exact occurrence is removed, even when it is not on a separate line
+
+    The longer variants are checked first so that a version with a final full
+    stop is removed completely instead of leaving the full stop behind.
+    """
+    cleaned_text = segmented_text
+
+    for thesis in sorted(SEGMENTED_INSERTED_ELEMENTS, key=len, reverse=True):
+        cleaned_text = cleaned_text.replace(thesis, "")
+
+    return cleaned_text
+
+
+def normalize_segmented_text(lines):
+    """
+    Normalizes segmented TXT content in the required order:
+
+    1. Join the original segmented text while preserving line boundaries.
+    2. Search for and remove only exactly matching configured uppercase theses.
+    3. Remove all remaining whitespace.
+    """
+    original_segmented_text = "\n".join(lines)
+    segmented_without_inserted_elements = remove_permitted_inserted_elements(
+        original_segmented_text
+    )
+    return remove_all_whitespace(segmented_without_inserted_elements)
+
+
+def get_difference_context(first_text, second_text, position, context_size=30):
+    """Returns short excerpts around the first differing character."""
+    start = max(0, position - context_size)
+    end = position + context_size
+    return first_text[start:end], second_text[start:end]
+
+
+def check_raw_vs_segmented(raw_txt_path, segmented_txt_path, errors):
+    """
+    Compares raw and segmented TXT content.
+
+    Before comparison:
+    - permitted inserted thesis statements are removed from segmented text
+    - all remaining whitespace is then removed from both texts
+    """
+    try:
+        raw_lines = safe_read_text_lines(raw_txt_path)
+    except Exception as e:
+        add_error(errors, raw_txt_path, f"Could not read raw TXT: {e}")
+        return
+
+    try:
+        segmented_lines = safe_read_text_lines(segmented_txt_path)
+    except Exception as e:
+        add_error(errors, segmented_txt_path, f"Could not read segmented TXT: {e}")
+        return
+
+    normalized_raw = normalize_raw_text(raw_lines)
+    normalized_segmented = normalize_segmented_text(segmented_lines)
+
+    if normalized_raw == normalized_segmented:
+        return
+
+    common_length = min(len(normalized_raw), len(normalized_segmented))
+    difference_position = common_length
+
+    for position in range(common_length):
+        if normalized_raw[position] != normalized_segmented[position]:
+            difference_position = position
+            break
+
+    raw_context, segmented_context = get_difference_context(
+        normalized_raw,
+        normalized_segmented,
+        difference_position,
+    )
+
+    add_error(
+        errors,
+        segmented_txt_path,
+        "Segmented text does not match raw text after first removing permitted "
+        "inserted elements from segmented and then removing whitespace; "
+        f"raw file = '{raw_txt_path}', first difference at normalized character "
+        f"{difference_position}, raw length = {len(normalized_raw)}, "
+        f"segmented length = {len(normalized_segmented)}, "
+        f"raw excerpt = '{raw_context}', segmented excerpt = '{segmented_context}'"
+    )
+
+
 def safe_read_csv_rows(file_path):
     """
     Reads CSV files robustly.
     Expects pipe-separated files: |
     """
-    encodings = ["utf-8", "cp1252", "latin1"]
+    encodings = ["utf-8-sig", "utf-8", "cp1252", "latin1"]
 
     last_error = None
     for enc in encodings:
@@ -92,6 +235,177 @@ def safe_read_csv_rows(file_path):
             last_error = e
 
     raise last_error
+
+
+def check_csv_field_delimiter(csv_path, errors):
+    """
+    Checks whether the CSV header uses | as its field delimiter.
+
+    The delimiter is inferred from the known column names in the first
+    non-empty line. This is more reliable than counting commas or semicolons,
+    because those characters may also occur inside text fields.
+
+    Returns True when | is used, otherwise False.
+    """
+    try:
+        lines = safe_read_text_lines(csv_path)
+    except Exception as e:
+        add_error(errors, csv_path, f"Could not inspect CSV delimiter: {e}")
+        return False
+
+    header_line = next((line for line in lines if line.strip()), "")
+    if header_line == "":
+        # The empty-file error is produced later by parse_annotated_csv.
+        return True
+
+    expected_columns = set(EXPECTED_CSV_COLUMNS)
+    candidates = ("|", ";", "\t", ",")
+    scores = {}
+
+    for delimiter in candidates:
+        fields = next(csv.reader([header_line], delimiter=delimiter))
+        cleaned_fields = [field.strip().lstrip("\ufeff") for field in fields]
+        scores[delimiter] = sum(
+            field in expected_columns for field in cleaned_fields
+        )
+
+    # In a tie, | wins because it is the required delimiter.
+    best_delimiter = max(candidates, key=lambda delimiter: (scores[delimiter], delimiter == "|"))
+
+    if best_delimiter != "|" or scores["|"] < 2:
+        delimiter_names = {";": "semicolon", ",": "comma", "\t": "tab"}
+        detected = delimiter_names.get(best_delimiter, repr(best_delimiter))
+        add_error(
+            errors,
+            csv_path,
+            "CSV field delimiter must be '|'; "
+            f"detected delimiter: {detected}"
+        )
+        return False
+
+    return True
+
+
+def normalize_segment_text_for_comparison(text):
+    """Removes all whitespace and converts the text to lowercase."""
+    return remove_all_whitespace(text).lower()
+
+
+def check_segmented_lines_against_annotated(
+    segmented_lines,
+    segment_rows,
+    header_length,
+    idx_n,
+    idx_text,
+    idx_add,
+    csv_path,
+    errors,
+):
+    """
+    Compares each segmented TXT line with the corresponding annotated segment.
+
+    For the general comparison, all whitespace is removed and both texts are
+    converted to lowercase. If a segmented line is an exactly configured
+    uppercase inserted thesis, the corresponding annotated segment must contain
+    the configured normal spelling of that thesis and ADD must be J.
+    """
+    comparable_count = min(len(segmented_lines), len(segment_rows))
+
+    for segment_index in range(comparable_count):
+        segmented_text = segmented_lines[segment_index]
+        row = segment_rows[segment_index]
+        if len(row) < header_length:
+            row = row + [""] * (header_length - len(row))
+
+        annotated_text = row[idx_text].strip()
+        add_value = row[idx_add].strip()
+        number_value = row[idx_n].strip()
+        segment_label = number_value if number_value else str(segment_index)
+        csv_row_number = segment_index + 3
+        segmented_line_number = segment_index + 1
+
+        if (
+            normalize_segment_text_for_comparison(segmented_text)
+            != normalize_segment_text_for_comparison(annotated_text)
+        ):
+            add_error(
+                errors,
+                csv_path,
+                f"Segment {segment_label} does not match segmented TXT line "
+                f"{segmented_line_number} (CSV row {csv_row_number}); "
+                f"segmented = '{segmented_text}', annotated = '{annotated_text}'"
+            )
+
+        # Inserted theses are recognized only as exact uppercase line content.
+        exact_segmented_text = segmented_text.strip()
+        inserted_thesis_recognized = (
+            exact_segmented_text in SEGMENTED_INSERTED_ELEMENTS
+        )
+
+        if inserted_thesis_recognized:
+            expected_annotated_text = INSERTED_THESIS_NORMAL_FORMS[
+                exact_segmented_text
+            ]
+            problems = []
+
+            if (
+                remove_all_whitespace(annotated_text)
+                != remove_all_whitespace(expected_annotated_text)
+            ):
+                problems.append(
+                    "the annotated Text must contain the thesis in its normal "
+                    f"spelling: '{expected_annotated_text}'"
+                )
+
+            if add_value != "J":
+                problems.append(f"ADD must be 'J' (found '{add_value}')")
+
+            if problems:
+                add_error(
+                    errors,
+                    csv_path,
+                    f"Segment {segment_label} is an inserted uppercase thesis in "
+                    f"segmented TXT line {segmented_line_number}; "
+                    + "; ".join(problems)
+                    + f"; annotated Text = '{annotated_text}'"
+                )
+
+        # Reverse check: ADD = J is valid only when the corresponding
+        # segmented line was recognized as an exactly configured uppercase
+        # inserted thesis.
+        elif add_value == "J":
+            add_error(
+                errors,
+                csv_path,
+                f"Segment {segment_label} has ADD = 'J', but segmented TXT line "
+                f"{segmented_line_number} is not a recognized inserted uppercase "
+                f"thesis; segmented = '{segmented_text}', annotated = '{annotated_text}'"
+            )
+
+    # If annotated contains additional rows, ADD = J cannot be justified
+    # because there is no corresponding segmented line in which a thesis
+    # could have been recognized.
+    for segment_index in range(comparable_count, len(segment_rows)):
+        row = segment_rows[segment_index]
+        if len(row) < header_length:
+            row = row + [""] * (header_length - len(row))
+
+        add_value = row[idx_add].strip()
+        if add_value != "J":
+            continue
+
+        number_value = row[idx_n].strip()
+        segment_label = number_value if number_value else str(segment_index)
+        csv_row_number = segment_index + 3
+        annotated_text = row[idx_text].strip()
+
+        add_error(
+            errors,
+            csv_path,
+            f"Segment {segment_label} (CSV row {csv_row_number}) has ADD = 'J', "
+            "but no corresponding segmented TXT line exists; therefore no "
+            f"inserted uppercase thesis can be recognized; annotated = '{annotated_text}'"
+        )
 
 
 def get_stem_map(folder_path):
@@ -112,6 +426,15 @@ def get_stem_map(folder_path):
     return stem_map
 
 
+def find_file_with_suffix(file_paths, suffix):
+    """Returns the first file with the requested suffix, or None."""
+    suffix = suffix.lower()
+    for file_path in file_paths:
+        if file_path.suffix.lower() == suffix:
+            return file_path
+    return None
+
+
 def find_column_index(header, column_name):
     try:
         return header.index(column_name)
@@ -126,6 +449,9 @@ def parse_annotated_csv(csv_path, errors):
     Row 1: metadata row
     From row 2 onwards: segment rows
     """
+    if not check_csv_field_delimiter(csv_path, errors):
+        return None
+
     try:
         rows = safe_read_csv_rows(csv_path)
     except Exception as e:
@@ -279,16 +605,13 @@ def parse_zie_targets(zie_value):
 
     number_list_pattern = r"\d+(?:;\d+)*"
 
-    # Simple target list, e.g. 3 or 3;4 or 3;4;5
     if re.fullmatch(number_list_pattern, value):
         return True, [int(part) for part in value.split(";")]
 
-    # Connection, e.g. 3-4
     match = re.fullmatch(r"(\d+)-(\d+)", value)
     if match:
         return True, [int(match.group(1)), int(match.group(2))]
 
-    # Combination with target, e.g. [1] 3 or [1;2] 3;4
     match = re.fullmatch(r"\[(\d+(?:;\d+)*)\]\s+(\d+(?:;\d+)*)", value)
     if match:
         target_part = match.group(2)
@@ -358,6 +681,18 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
             errors,
             csv_path,
             f"Segment count does not match segmented TXT: TXT={len(txt_lines)}, CSV={len(segment_rows)}"
+        )
+
+    if txt_lines is not None:
+        check_segmented_lines_against_annotated(
+            segmented_lines=txt_lines,
+            segment_rows=segment_rows,
+            header_length=len(csv_data["header"]),
+            idx_n=idx_n,
+            idx_text=idx_text,
+            idx_add=idx_add,
+            csv_path=csv_path,
+            errors=errors,
         )
 
     expected_number = 0
@@ -493,7 +828,7 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
         # 5) Bei KON = ABW oder UKL:
         #    TH1 darf in REL nur SUP, ELA oder RES haben.
         #    TH2 darf in REL nur ATT, ELA oder RES haben.
-        if konstellation in {"ABW", "UKL"}:
+        if konstellation in {"ABW", "UEN"}:
             if fkt_value == "TH1" and rel_value not in {"SUP", "ELA", "RES"}:
                 add_error(
                     errors,
@@ -515,7 +850,6 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                 f"CSV row {row_index}: REL must be 'SUP', 'ELA', or 'RES' when KON = 'UEN' and FKT = '{fkt_value}'"
             )
 
-        # 7) ZTH darf in REL nur ELA, RES oder leer haben.
         if fkt_value == "ZTH" and rel_value not in {"ELA", "RES", ""}:
             add_error(
                 errors,
@@ -567,8 +901,6 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                     f"CSV row {row_index}: invalid FKT value '{fkt_value}', allowed values are: {', '.join(sorted(ALLOWED_FKT_VALUES))}"
                 )
 
-        # Neue Regel 1:
-        # Wenn ADD = J, darf Text nicht nur aus Großbuchstaben bestehen
         if add_value == "J" and has_text and is_text_only_uppercase(text_value):
             add_error(
                 errors,
@@ -576,8 +908,6 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                 f"CSV row {row_index}: text must not consist only of uppercase letters when ADD = 'J'"
             )
 
-    # Cross-reference checks for ZIE targets.
-    # Build a lookup table from segment number (Nr.) to FKT.
     number_to_fkt = {}
     number_to_row_index = {}
     duplicate_numbers = set()
@@ -613,9 +943,6 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                 )
                 continue
 
-            # New rule 1:
-            # REL = RES or ELA must point to a target with the same FKT.
-            # Example: FKT = PRO with REL = RES/ELA may only point to FKT = PRO.
             if rel_value in {"RES", "ELA"} and source_fkt != target_fkt:
                 add_error(
                     errors,
@@ -625,15 +952,21 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                     f"source FKT = '{source_fkt}', target FKT = '{target_fkt}'"
                 )
 
-            # New rule 2:
-            # In ABW and UEN texts, only TH1 and TH2 may point to ZTH.
-            if konstellation in {"ABW", "UEN"} and target_fkt == "ZTH" and source_fkt not in {"TH1", "TH2", "ZTH"}:
-                add_error(
-                    errors,
-                    csv_path,
-                    f"CSV row {row_index}: in KON = '{konstellation}', only TH1 and TH2 may point to ZTH; "
-                    f"source FKT = '{source_fkt}', target {target_number} has FKT = 'ZTH'"
-                )
+            if konstellation in {"ABW", "UEN"} and target_fkt == "ZTH":
+                if source_fkt in {"PRO", "CON"}:
+                    add_error(
+                        errors,
+                        csv_path,
+                        f"CSV row {row_index}: unusual direct connection in KON = '{konstellation}': "
+                        f"FKT = '{source_fkt}' points directly to target {target_number} with FKT = 'ZTH'"
+                    )
+                elif source_fkt not in {"TH1", "TH2", "ZTH"}:
+                    add_error(
+                        errors,
+                        csv_path,
+                        f"CSV row {row_index}: in KON = '{konstellation}', only TH1 and TH2 may point to ZTH; "
+                        f"source FKT = '{source_fkt}', target {target_number} has FKT = 'ZTH'"
+                    )
 
     if duplicate_numbers:
         add_error(
@@ -663,8 +996,6 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                 f"KON is '{konstellation}', therefore FKT must contain at least one TH1 and one TH2; missing: {', '.join(missing_parts)}"
             )
 
-    # Neue Regel 2:
-    # Wenn KON = EIN, dann darf es kein TH1 oder TH2 geben
     if konstellation == "EIN":
         forbidden_parts = []
         if found_th1:
@@ -679,8 +1010,6 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                 f"KON is 'EIN', therefore FKT must not contain: {', '.join(forbidden_parts)}"
             )
 
-    # Neue Regel 4:
-    # Wenn KON = EIN, ABW oder UEN, dann muss mindestens ein ZTH existieren
     if konstellation in {"EIN", "ABW", "UEN"} and not found_zth:
         add_error(
             errors,
@@ -692,42 +1021,57 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
 def process_parent_folder(parent_folder, errors):
     raw_folder, segmented_folder, annotated_folder = check_required_subfolders(parent_folder, errors)
 
-    # Without an annotated folder there are no CSV files to validate.
-    # Missing raw or segmented folders are reported, but CSV-only checks
-    # should still run whenever annotated CSV files are available.
+    check_same_names_in_three_folders(parent_folder, raw_folder, segmented_folder, annotated_folder, errors)
+
+    raw_map = get_stem_map(raw_folder)
+    segmented_map = get_stem_map(segmented_folder)
+
+    common_raw_segmented_names = set(raw_map.keys()) & set(segmented_map.keys())
+    for name in sorted(common_raw_segmented_names):
+        raw_txt = find_file_with_suffix(raw_map[name], ".txt")
+        segmented_txt = find_file_with_suffix(segmented_map[name], ".txt")
+
+        if raw_txt is None:
+            add_error(
+                errors,
+                parent_folder,
+                f"Missing .txt file for '{name}' in folder raw; skipping raw-vs-segmented text comparison"
+            )
+            continue
+
+        if segmented_txt is None:
+            add_error(
+                errors,
+                parent_folder,
+                f"Missing .txt file for '{name}' in folder segmented; skipping raw-vs-segmented text comparison"
+            )
+            continue
+
+        check_raw_vs_segmented(raw_txt, segmented_txt, errors)
+
     if not annotated_folder.is_dir():
         return
 
-    check_same_names_in_three_folders(parent_folder, raw_folder, segmented_folder, annotated_folder, errors)
-
-    segmented_map = get_stem_map(segmented_folder)
     annotated_map = get_stem_map(annotated_folder)
 
-    # Iterate over annotated files, not only over names that also exist in
-    # segmented. This ensures CSV checks are still performed when raw or
-    # segmented files/folders are missing.
     for name in sorted(annotated_map.keys()):
         annotated_files = annotated_map[name]
         segmented_files = segmented_map.get(name, [])
 
-        csv_file = None
-        for file_path in annotated_files:
-            if file_path.suffix.lower() == ".csv":
-                csv_file = file_path
-                break
+        csv_file = find_file_with_suffix(annotated_files, ".csv")
 
         if csv_file is None:
             add_error(errors, parent_folder, f"Missing .csv file for '{name}' in folder annotated")
             continue
 
-        segmented_txt = None
-        for file_path in segmented_files:
-            if file_path.suffix.lower() == ".txt":
-                segmented_txt = file_path
-                break
+        segmented_txt = find_file_with_suffix(segmented_files, ".txt")
 
         if segmented_txt is None:
-            add_error(errors, parent_folder, f"Missing .txt file for '{name}' in folder segmented; skipping TXT-vs-CSV segment-count check")
+            add_error(
+                errors,
+                parent_folder,
+                f"Missing .txt file for '{name}' in folder segmented; skipping TXT-vs-CSV segment-count check"
+            )
 
         check_segmented_vs_csv(segmented_txt, csv_file, errors)
 
@@ -742,11 +1086,9 @@ def write_errors(errors, output_file):
     """
     output_path = Path(output_file)
 
-    # If the given output path is an existing folder, create the error file inside it.
     if output_path.exists() and output_path.is_dir():
         output_path = output_path / "check_data_errors.txt"
 
-    # If the path has no file extension, treat it as a folder path as well.
     elif output_path.suffix == "":
         output_path.mkdir(parents=True, exist_ok=True)
         output_path = output_path / "check_data_errors.txt"
@@ -794,7 +1136,7 @@ def run_checks(input_root, output_error_file):
 
 
 def main():
-    input_root = r"C:\Users\haufa\Downloads\B 911-1010+\gold"
+    input_root = r"C:\Users\haufa\Downloads\C 701-750++"
     output_error_file = r"C:\Users\haufa\Downloads\check_data_errors.txt"
 
     errors = run_checks(input_root, output_error_file)
