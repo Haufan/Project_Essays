@@ -75,6 +75,10 @@ INSERTED_THESIS_NORMAL_FORMS_BASE = {
         "Darstellendes Spiel sollte nicht verpflichtend eingeführt werden.",
     "MAN SOLLTE EIN EHRENAMT AUSFÜHREN.": "Man sollte ein Ehrenamt ausführen.",
     "MAN SOLLTE KEIN EHRENAMT AUSFÜHREN.": "Man sollte kein Ehrenamt ausführen.",
+    "MAN SOLLTE SELBER KOCHEN.": "Man sollte selber kochen.",
+    "EHRENÄMTER SOLLTEN BEZAHLT WERDEN.": "Ehrenämter sollten bezahlt werden.",
+    "EHRENÄMTER SOLLTEN NICHT BEZAHLT WERDEN.": "Ehrenämter sollten nicht bezahlt werden.",
+    "JEDER SOLLTE SELBST ENTSCHEIDEN.": "Jeder sollte selbst entscheiden."
 }
 
 INSERTED_THESIS_NORMAL_FORMS = {
@@ -825,25 +829,30 @@ def check_segmented_vs_csv(segmented_txt_path, csv_path, errors):
                     f"CSV row {row_index}: ZIE must be empty when FKT = '{fkt_value}'"
                 )
 
-        # 5) Bei KON = ABW oder UKL:
+        # 5) Bei KON = ABW:
         #    TH1 darf in REL nur SUP, ELA oder RES haben.
         #    TH2 darf in REL nur ATT, ELA oder RES haben.
-        if konstellation in {"ABW", "UEN"}:
+        if konstellation == "ABW":
             if fkt_value == "TH1" and rel_value not in {"SUP", "ELA", "RES"}:
                 add_error(
                     errors,
                     csv_path,
-                    f"CSV row {row_index}: REL must be 'SUP', 'ELA', or 'RES' when KON = '{konstellation}' and FKT = 'TH1'"
+                    f"CSV row {row_index}: REL must be 'SUP', 'ELA', or 'RES' when KON = 'ABW' and FKT = 'TH1'"
                 )
             if fkt_value == "TH2" and rel_value not in {"ATT", "ELA", "RES"}:
                 add_error(
                     errors,
                     csv_path,
-                    f"CSV row {row_index}: REL must be 'ATT', 'ELA', or 'RES' when KON = '{konstellation}' and FKT = 'TH2'"
+                    f"CSV row {row_index}: REL must be 'ATT', 'ELA', or 'RES' when KON = 'ABW' and FKT = 'TH2'"
                 )
 
-        # 6) Bei KON = UEN müssen TH1 und TH2 in REL SUP, ELA oder RES haben.
-        if konstellation == "UEN" and fkt_value in {"TH1", "TH2"} and rel_value not in {"SUP", "ELA", "RES"}:
+        # 6) Bei KON = UEN:
+        #    TH1 und TH2 dürfen in REL nur SUP, ELA oder RES haben.
+        if (
+            konstellation == "UEN"
+            and fkt_value in {"TH1", "TH2"}
+            and rel_value not in {"SUP", "ELA", "RES"}
+        ):
             add_error(
                 errors,
                 csv_path,
@@ -1103,46 +1112,148 @@ def write_errors(errors, output_file):
 
 
 def find_data_groups(root_path):
-    subfolders = [p for p in root_path.iterdir() if p.is_dir()]
-    return sorted(subfolders, key=lambda p: p.name)
+    """
+    Sucht rekursiv im gesamten Annotationen-Ordner nach allen
+    Verzeichnissen mit dem Namen 'annotated'.
+
+    Für jeden gefundenen annotated-Ordner wird dessen übergeordneter
+    Ordner zurückgegeben.
+
+    Beispiel:
+
+        C:\\Users\\haufa\\Downloads\\Annotationen
+        ├── A 1-50++
+        │   ├── raw
+        │   ├── segmented
+        │   └── annotated
+        │
+        ├── Unterordner
+        │   └── A 51-100++
+        │       ├── raw
+        │       ├── segmented
+        │       └── annotated
+
+    Rückgabe:
+        [
+            Path(...\\A 1-50++),
+            Path(...\\A 51-100++),
+            ...
+        ]
+    """
+    parent_folders = set()
+
+    for annotated_folder in root_path.rglob("annotated"):
+
+        if not annotated_folder.is_dir():
+            continue
+
+        parent_folder = annotated_folder.parent
+        parent_folders.add(parent_folder)
+
+    return sorted(
+        parent_folders,
+        key=lambda path: str(path).lower()
+    )
 
 
 def run_checks(input_root, output_error_file):
+    """
+    Durchsucht input_root rekursiv nach jedem annotated-Ordner
+    und führt für dessen übergeordneten Ordner alle vorhandenen
+    Prüfungen aus.
+    """
     errors = []
     root_path = Path(input_root)
 
     if not root_path.exists():
-        add_error(errors, root_path, "Input path does not exist")
+        add_error(
+            errors,
+            root_path,
+            "Input path does not exist"
+        )
         write_errors(errors, output_error_file)
         return errors
 
     if not root_path.is_dir():
-        add_error(errors, root_path, "Input path is not a folder")
+        add_error(
+            errors,
+            root_path,
+            "Input path is not a folder"
+        )
         write_errors(errors, output_error_file)
         return errors
 
+    # Rekursiv alle Ordner finden, die einen annotated-Unterordner besitzen.
     parent_folders = find_data_groups(root_path)
 
     if not parent_folders:
-        add_error(errors, root_path, "No subfolders found")
+        add_error(
+            errors,
+            root_path,
+            "No annotated folders found"
+        )
         write_errors(errors, output_error_file)
         return errors
 
-    for parent_folder in parent_folders:
-        process_parent_folder(parent_folder, errors)
+    print(
+        f"Gefundene annotated-Ordner: {len(parent_folders)}"
+    )
+    print()
 
-    write_errors(errors, output_error_file)
+    for number, parent_folder in enumerate(
+        parent_folders,
+        start=1
+    ):
+        print(
+            f"[{number}/{len(parent_folders)}] "
+            f"Prüfe: {parent_folder}"
+        )
+
+        process_parent_folder(
+            parent_folder,
+            errors
+        )
+
+    write_errors(
+        errors,
+        output_error_file
+    )
+
     return errors
 
 
 def main():
-    input_root = r"C:\Users\haufa\Downloads\C 701-750++"
-    output_error_file = r"C:\Users\haufa\Downloads\check_data_errors.txt"
 
-    errors = run_checks(input_root, output_error_file)
+    ANNOTATION_ROOT = Path(
+        r"C:\Users\haufa\Downloads\Annotationen"
+    )
 
-    print(f"Check completed. Number of errors: {len(errors)}")
-    print(f"Error file: {output_error_file}")
+    OUTPUT_FILE = (
+        ANNOTATION_ROOT
+        / "check_data_errors.txt"
+    )
+
+    print("=" * 80)
+    print("ANNOTATION CHECK")
+    print("=" * 80)
+    print(f"Root: {ANNOTATION_ROOT}")
+    print()
+
+    errors = run_checks(
+        ANNOTATION_ROOT,
+        OUTPUT_FILE
+    )
+
+    print()
+    print("=" * 80)
+    print("PRÜFUNG ABGESCHLOSSEN")
+    print("=" * 80)
+    print(
+        f"Anzahl gefundener Fehler: {len(errors)}"
+    )
+    print(
+        f"Fehlerdatei: {OUTPUT_FILE}"
+    )
 
 
 if __name__ == "__main__":

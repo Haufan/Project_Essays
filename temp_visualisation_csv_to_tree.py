@@ -877,9 +877,9 @@ if __name__ == "__main__":
     # Option:
     # 0 = Segmenttext wird nicht in den Knoten angezeigt
     # 1 = Segmenttext wird in den Knoten angezeigt
-    SHOW_TEXT = 1
+    SHOW_TEXT = 0
 
-    INPUT_FOLDER = r"C:\Users\haufa\Downloads\annotated\Mariesa"
-    #INPUT_FOLDER = r"C:\Users\haufa\Downloads\C 701-750+\C 701-750+\annotated"
+    #INPUT_FOLDER = r"C:\Users\haufa\Downloads\IAA++\IAA++"
+    INPUT_FOLDER = r"C:\Users\haufa\Downloads\Annotationen\Annotationen\IAA\Mariesa"
 
     process_folder(INPUT_FOLDER, show_text=bool(SHOW_TEXT))
